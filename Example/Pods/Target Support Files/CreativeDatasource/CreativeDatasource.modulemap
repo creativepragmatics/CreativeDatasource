@@ -1,0 +1,6 @@
+framework module CreativeDatasource {
+  umbrella header "CreativeDatasource-umbrella.h"
+
+  export *
+  module * { export * }
+}
