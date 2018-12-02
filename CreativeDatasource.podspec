@@ -18,18 +18,22 @@ mindset. Will eventually be 100% unit tested. Pure Swift.
 
   s.ios.deployment_target = '9.0'
   s.swift_version = '4.2'
-  s.source_files = 'CreativeDatasource/Classes/**/*'
-  s.exclude_files = ['CreativeDatasource/Classes/TableView/**', 'CreativeDatasource/Classes/CachePersister/**']
   s.dependency 'ReactiveSwift', '~> 4.0.0'
 
-  s.subspec 'CreativeDatasource-UITableView' do |uitv|
-    uitv.source_files = 'CreativeDatasource/Classes/TableView/**/*'
-    uitv.dependency 'Dwifft', '~> 0.9'
+  s.subspec 'Core' do |ss|
+    ss.source_files = 'CreativeDatasource/Classes/Core/**/*'
   end
 
-  s.subspec 'CreativeDatasource-CachePersister' do |cache|
-    cache.source_files = 'CreativeDatasource/Classes/CachePersister/**/*'
-    cache.dependency 'Cache', '~> 5.2.0'
+  s.subspec 'UITableView' do |ss|
+    ss.source_files = 'CreativeDatasource/Classes/TableView/**/*'
+    ss.dependency 'CreativeDatasource/Core'
+    ss.dependency 'Dwifft', '~> 0.9'
+  end
+
+  s.subspec 'CachePersister' do |ss|
+    ss.source_files = 'CreativeDatasource/Classes/CachePersister/**/*'
+    ss.dependency 'CreativeDatasource/Core'
+    ss.dependency 'Cache', '~> 5.2.0'
   end
 
 end
