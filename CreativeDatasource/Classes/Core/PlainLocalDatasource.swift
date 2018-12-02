@@ -2,7 +2,7 @@ import Foundation
 import ReactiveSwift
 import Result
 
-public struct PlainLocalDatasource<Value_: Any, P_: Parameters, LIT_: LoadImpulseType, E_: DatasourceError> : Datasource {
+public struct PlainCacheDatasource<Value_: Any, P_: Parameters, LIT_: LoadImpulseType, E_: DatasourceError> : Datasource {
     public typealias Value = Value_
     public typealias LIT = LIT_
     public typealias P = P_
@@ -27,7 +27,7 @@ public struct PlainLocalDatasource<Value_: Any, P_: Parameters, LIT_: LoadImpuls
             let initialState = persister.load() ?? StateConcrete.datasourceNotReady
             self.state = SignalProducer(value: initialState)
         case .waitForLoadImpulse:
-            self.state = PlainLocalDatasource.asyncStateProducer(persister: persister, loadImpulseEmitter: loadImpulseEmitter, cacheLoadError: cacheLoadError, loadingMode: loadingMode)
+            self.state = PlainCacheDatasource.asyncStateProducer(persister: persister, loadImpulseEmitter: loadImpulseEmitter, cacheLoadError: cacheLoadError, loadingMode: loadingMode)
         }
     }
     

@@ -12,9 +12,9 @@ public protocol ResponseCombiner {
     associatedtype P: Parameters
     associatedtype LIT: LoadImpulseType
     associatedtype E: DatasourceError
-    typealias CompositeStateConcrete = CompositeState<Value, P, LIT, E>
+    typealias CachedStateConcrete = CachedState<Value, P, LIT, E>
     
-    func combinedState(datasource: DatasourceBox<Value, P, LIT, E>) -> SignalProducer<CompositeStateConcrete, NoError>
+    func combinedState(datasource: DatasourceBox<Value, P, LIT, E>) -> SignalProducer<CachedStateConcrete, NoError>
 }
 
 public extension ResponseCombiner {
@@ -28,15 +28,15 @@ public struct ResponseCombinerBox<Value_: Any, P_: Parameters, LIT_: LoadImpulse
     public typealias P = P_
     public typealias LIT = LIT_
     public typealias E = E_
-    public typealias CompositeStateConcrete = CompositeState<Value, P, LIT, E>
+    public typealias CachedStateConcrete = CachedState<Value, P, LIT, E>
     
-    private let _combinedState: (DatasourceBox<Value, P, LIT, E>) -> SignalProducer<CompositeStateConcrete, NoError>
+    private let _combinedState: (DatasourceBox<Value, P, LIT, E>) -> SignalProducer<CachedStateConcrete, NoError>
     
     init<RC: ResponseCombiner>(_ responseCombiner: RC) where RC.Value == Value, RC.P == P, RC.LIT == LIT, RC.E == E {
         self._combinedState = responseCombiner.combinedState
     }
     
-    public func combinedState(datasource: DatasourceBox<Value, P, LIT, E>) -> SignalProducer<CompositeStateConcrete, NoError> {
+    public func combinedState(datasource: DatasourceBox<Value, P, LIT, E>) -> SignalProducer<CachedStateConcrete, NoError> {
         return _combinedState(datasource)
     }
 }
@@ -46,13 +46,13 @@ public struct SupersedingResponseCombiner<Value_: Any, P_: Parameters, LIT_: Loa
     public typealias P = P_
     public typealias LIT = LIT_
     public typealias E = E_
-    public typealias CompositeStateConcrete = CompositeState<Value, P, LIT, E>
+    public typealias CachedStateConcrete = CachedState<Value, P, LIT, E>
     
     public init() { }
     
-    public func combinedState(datasource: DatasourceBox<Value, P, LIT, E>) -> SignalProducer<CompositeStateConcrete, NoError> {
-        return datasource.state.map({ state -> CompositeStateConcrete in
-            return CompositeState.with(state) // just return the new state, purging all previous ones
+    public func combinedState(datasource: DatasourceBox<Value, P, LIT, E>) -> SignalProducer<CachedStateConcrete, NoError> {
+        return datasource.state.map({ state -> CachedStateConcrete in
+            return CachedState.with(state) // just return the new state, purging all previous ones
         })
     }
 }

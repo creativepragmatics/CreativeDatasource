@@ -7,18 +7,18 @@ public struct PlainListCellsProvider<Value: Equatable, Item: Equatable, P: Param
     public typealias Cell = PlainListCell<Item, E>
     public typealias Cells = PlainListCells<Item, E>
     public typealias ValueToCells = (Value) -> [Cell]?
-    public typealias CompositeDatasourceConcrete = CompositeDatasource<Value, P, PullToRefreshLoadImpulseType, E>
-    private typealias CompositeStateConcrete = CompositeState<Value, P, PullToRefreshLoadImpulseType, E>
+    public typealias CachedDatasourceConcrete = CachedDatasource<Value, P, PullToRefreshLoadImpulseType, E>
+    private typealias CachedStateConcrete = CachedState<Value, P, PullToRefreshLoadImpulseType, E>
     
     public let cells: Property<Cells>
     
-    public init(compositeDatasource: CompositeDatasourceConcrete, valueToCells: @escaping ValueToCells, noResultsCell: Cell = .empty) {
-        self.cells = Property(initial: Cells.datasourceNotReady, then: PlainListCellsProvider.cellsFromStateProducer(compositeDatasource: compositeDatasource, valueToCells: valueToCells, noResultsCell: noResultsCell))
+    public init(cachedDatasource: CachedDatasourceConcrete, valueToCells: @escaping ValueToCells, noResultsCell: Cell = .empty) {
+        self.cells = Property(initial: Cells.datasourceNotReady, then: PlainListCellsProvider.cellsFromStateProducer(cachedDatasource: cachedDatasource, valueToCells: valueToCells, noResultsCell: noResultsCell))
     }
     
-    private static func cellsFromStateProducer(compositeDatasource: CompositeDatasourceConcrete, valueToCells: @escaping ValueToCells, noResultsCell: Cell) -> SignalProducer<Cells, NoError> {
+    private static func cellsFromStateProducer(cachedDatasource: CachedDatasourceConcrete, valueToCells: @escaping ValueToCells, noResultsCell: Cell) -> SignalProducer<Cells, NoError> {
         
-        return compositeDatasource.compositeState.producer
+        return cachedDatasource.cachedState.producer
             .flatMap(.latest, { state -> SignalProducer<Cells, NoError> in
                 
                 // We do the state-to-cells conversion on a background thread if feasible
@@ -37,7 +37,7 @@ public struct PlainListCellsProvider<Value: Equatable, Item: Equatable, P: Param
             })
     }
     
-    private static func cells(state: CompositeStateConcrete, valueToCells: @escaping ValueToCells, noResultsCell: Cell) -> SignalProducer<Cells, NoError> {
+    private static func cells(state: CachedStateConcrete, valueToCells: @escaping ValueToCells, noResultsCell: Cell) -> SignalProducer<Cells, NoError> {
         
         func boxedValueToCells(_ box: StrongEqualityValueBox<Value>?) -> [Cell]? {
             return (box?.value).flatMap({ valueToCells($0) })

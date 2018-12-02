@@ -1,6 +1,6 @@
 import Foundation
 
-public enum CompositeState<Value: Any, P: Parameters, LIT: LoadImpulseType, E: DatasourceError>: Equatable {
+public enum CachedState<Value: Any, P: Parameters, LIT: LoadImpulseType, E: DatasourceError>: Equatable {
     case datasourceNotReady
     case loading(cached: StrongEqualityValueBox<Value>?, loadImpulse: LoadImpulse<P, LIT>)
     case success(valueBox: StrongEqualityValueBox<Value>, loadImpulse: LoadImpulse<P, LIT>)
@@ -36,7 +36,7 @@ public enum CompositeState<Value: Any, P: Parameters, LIT: LoadImpulseType, E: D
         }
     }
     
-    static func with(_ state: State<Value, P, LIT, E>) -> CompositeState {
+    static func with(_ state: State<Value, P, LIT, E>) -> CachedState {
         switch state {
         case .datasourceNotReady: return .datasourceNotReady
         case let .loading(loadImpulse): return .loading(cached: nil, loadImpulse: loadImpulse)
@@ -62,7 +62,7 @@ public enum CompositeState<Value: Any, P: Parameters, LIT: LoadImpulseType, E: D
         return loadImpulse?.parameters
     }
     
-    public static func == (lhs: CompositeState, rhs: CompositeState) -> Bool {
+    public static func == (lhs: CachedState, rhs: CachedState) -> Bool {
         switch (lhs, rhs) {
         case (.datasourceNotReady, .datasourceNotReady):
             return true
