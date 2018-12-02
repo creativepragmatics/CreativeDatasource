@@ -63,3 +63,45 @@ public struct DefaultLoadImpulseEmitter<P_: Parameters, LIT_: LoadImpulseType>: 
     }
 
 }
+
+public struct RecurringLoadImpulseEmitter<P_: Parameters, LIT_: LoadImpulseType>: LoadImpulseEmitter {
+    public typealias P = P_
+    public typealias LIT = LIT_
+    public typealias LI = LoadImpulse<P, LIT>
+    private typealias Pipe = (output: Signal<LI, NoError>, input: Signal<LI, NoError>.Observer)
+    
+    private let innerEmitter: DefaultLoadImpulseEmitter<P, LIT>
+    public let loadImpulses: SignalProducer<LI, NoError>
+    public let timerMode: MutableProperty<TimerMode> // change at any time to adapt
+    
+    public init(emitInitially initialImpulse: LoadImpulse<P, LIT>?, timerMode: TimerMode = .none) {
+        
+        let timerModeProperty = MutableProperty(timerMode)
+        self.timerMode = timerModeProperty
+        self.innerEmitter = DefaultLoadImpulseEmitter<P, LIT>.init(emitInitially: initialImpulse)
+        
+        self.loadImpulses = innerEmitter.loadImpulses
+            .combineLatest(with: timerModeProperty.producer)
+            .flatMap(.latest, { (loadImpulse, timerMode) -> SignalProducer<LoadImpulse<P, LIT>, NoError> in
+                let current = SignalProducer<LoadImpulse<P, LIT>, NoError>(value: loadImpulse)
+                
+                switch timerMode {
+                case .none:
+                    return current
+                case let .timeInterval(timeInterval):
+                    let subsequent = SignalProducer.timer(interval: timeInterval, on: QueueScheduler.main).map({ _ in loadImpulse })
+                    return current.concat(subsequent)
+                }
+            })
+    }
+    
+    public func emit(_ loadImpulse: LoadImpulse<P, LIT>) {
+        innerEmitter.emit(loadImpulse)
+    }
+    
+    public enum TimerMode {
+        case none
+        case timeInterval(DispatchTimeInterval)
+    }
+    
+}
