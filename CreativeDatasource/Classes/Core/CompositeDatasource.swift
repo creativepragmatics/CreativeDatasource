@@ -25,17 +25,22 @@ public struct CompositeDatasource<Value: Any, P: Parameters, LIT: LoadImpulseTyp
                 responseCombiner: ResponseCombinerConcrete) {
         self.loadImpulseEmitter = loadImpulseEmitter
         self.compositeState = Property<CompositeState>(initial: .datasourceNotReady, then: CompositeDatasource.compositeStatesProducer(loadImpulseEmitter: loadImpulseEmitter,localDatasource: localDatasource, remoteDatasource: remoteDatasource, persister: persister, responseCombiner: responseCombiner))
-    }   
+    }
     
-    public func load(_ loadImpulse: LoadImpulse<P, LIT>) -> SignalProducer<RefreshingEnded, NoError> {
+    public func load(_ loadImpulse: LoadImpulse<P, LIT>) -> LoadingStarted {
         
-        guard !shouldSkipRefresh(for: loadImpulse) else {
-            return SignalProducer(value: RefreshingEnded())
+        guard !shouldSkipLoad(for: loadImpulse) else {
+            return false
         }
         
-        let loadingEnded = compositeState.producer
+        loadImpulseEmitter.emit(loadImpulse)
+        return true
+    }
+    
+    public var loadingEnded: SignalProducer<Void, NoError> {
+        return compositeState.producer
             .skip(first: 1) // skip first (= current) value
-            .filter({ fetchState -> Bool in // only allow end-states (failed, success)
+            .filter({ fetchState -> Bool in // only allow end-states (error, success)
                 switch fetchState {
                 case .error, .success:
                     return true
@@ -43,24 +48,10 @@ public struct CompositeDatasource<Value: Any, P: Parameters, LIT: LoadImpulseTyp
                     return false
                 }
             })
-            .map({ _ in RefreshingEnded() })
-            .replayLazily(upTo: 1) // cache only 1 endstate for every subscriber
-        
-        // We start the producer right now, because we need to observe
-        // any states send as soon as a loadImpulse is triggered.
-        // Else, we might miss immediately returned state (e.g. reading from
-        // disk).
-        loadingEnded
-            .take(first: 1) // take only 1 so this subscriber gets disposed afterwards
-            .start()
-        
-        // Start loadImpulse
-        loadImpulseEmitter.emit(loadImpulse)
-        
-        return loadingEnded.take(first: 1)
+            .map({ _ in () })
     }
     
-    private func shouldSkipRefresh(for loadImpulse: LoadImpulse<P, LIT>) -> Bool {
+    private func shouldSkipLoad(for loadImpulse: LoadImpulse<P, LIT>) -> Bool {
         return loadImpulse.skipIfResultAvailable && compositeState.value.value(loadImpulse.parameters) != nil
     }
     
@@ -252,4 +243,4 @@ public struct CompositeDatasource<Value: Any, P: Parameters, LIT: LoadImpulseTyp
     
 }
 
-public typealias RefreshingEnded = Void
+public typealias LoadingStarted = Bool
