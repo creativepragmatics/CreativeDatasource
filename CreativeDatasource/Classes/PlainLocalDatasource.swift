@@ -11,7 +11,7 @@ public struct PlainLocalDatasource<Value_: Codable, P_: Parameters, LIT_: LoadIm
     public typealias StatePersisterConcrete = StatePersisterBox<Value, P, LIT, E>
     public typealias LoadImpulseEmitterConcrete = LoadImpulseEmitterBox<P, LIT>
     
-    public let state: Property<StateConcrete>
+    public let state: SignalProducer<StateConcrete, NoError>
     public var sendsFirstStateSynchronously: Bool {
         switch loadingMode {
         case .synchronously: return true
@@ -24,13 +24,10 @@ public struct PlainLocalDatasource<Value_: Codable, P_: Parameters, LIT_: LoadIm
         self.loadingMode = loadingMode
         switch loadingMode {
         case .synchronously:
-            if let cached = persister.load() {
-                self.state = Property(initial: cached, then: .empty)
-            } else {
-                self.state = Property(initial: StateConcrete.initial, then: .empty)
-            }
+            let initialState = persister.load() ?? StateConcrete.initial
+            self.state = SignalProducer(value: initialState)
         case .waitForLoadImpulse:
-            self.state = Property<StateConcrete>(initial: .initial, then: PlainLocalDatasource.asyncStateProducer(persister: persister, loadImpulseEmitter: loadImpulseEmitter, cacheLoadError: cacheLoadError, loadingMode: loadingMode))
+            self.state = PlainLocalDatasource.asyncStateProducer(persister: persister, loadImpulseEmitter: loadImpulseEmitter, cacheLoadError: cacheLoadError, loadingMode: loadingMode)
         }
     }
     

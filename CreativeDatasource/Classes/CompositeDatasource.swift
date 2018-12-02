@@ -66,7 +66,7 @@ public struct CompositeDatasource<Value: Codable, P: Parameters, LIT: LoadImpuls
         let initialState = SignalProducer<CompositeStateConcrete, NoError>(value: .initial)
         guard let datasource = datasource else { return initialState }
         
-        let compositeStates = datasource.state.producer.map({ CompositeState.with($0) })
+        let compositeStates = datasource.state.map({ CompositeState.with($0) })
         return initialState.concat(compositeStates)
     }
     
@@ -77,16 +77,22 @@ public struct CompositeDatasource<Value: Codable, P: Parameters, LIT: LoadImpuls
                                                 responseCombiner: ResponseCombinerConcrete)
         -> SignalProducer<CompositeStateConcrete, NoError> {
             
+            let initialStateProducer = SignalProducer(value: CompositeStateConcrete.initial)
+            
             let localState = datasourceState(localDatasource)
+            
             let remoteState: SignalProducer<CompositeStateConcrete, NoError> = {
                 if let remoteDatasource = remoteDatasource {
-                    return responseCombiner.combinedState(datasource: remoteDatasource).replayLazily(upTo: 1)
+                    let combinedRemoteStates = responseCombiner.combinedState(datasource: remoteDatasource)
+                        .replayLazily(upTo: 1)
+                    return initialStateProducer
+                        .concat(combinedRemoteStates)
                 } else {
-                    return SignalProducer(value: CompositeStateConcrete.initial)
+                    return initialStateProducer
                 }
             }()
             
-            let remoteSuccess = SignalProducer(value: .initial)
+            let remoteSuccess = initialStateProducer
                 .concat(remoteState.filter({ remote in
                     if case .success = remote {
                         return true

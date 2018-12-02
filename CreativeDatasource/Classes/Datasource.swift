@@ -9,7 +9,7 @@ public protocol Datasource {
     associatedtype E: DatasourceError
     typealias StateConcrete = State<Value, P, LIT, E>
     
-    var state: Property<StateConcrete> {get}
+    var state: SignalProducer<StateConcrete, NoError> {get}
     var sendsFirstStateSynchronously: Bool {get}
 }
 
@@ -26,7 +26,7 @@ public struct DatasourceBox<Value_: Codable, P_: Parameters, LIT_: LoadImpulseTy
     public typealias E = E_
     public typealias StateConcrete = State<Value, P, LIT, E>
     
-    public let state: Property<StateConcrete>
+    public let state: SignalProducer<StateConcrete, NoError>
     public let sendsFirstStateSynchronously: Bool
     
     init<D: Datasource>(_ datasource: D) where D.Value == Value, D.P == P, D.LIT == LIT, D.E == E {

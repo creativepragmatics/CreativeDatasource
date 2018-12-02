@@ -51,7 +51,7 @@ public struct SupersedingResponseCombiner<Value_: Codable, P_: Parameters, LIT_:
     public init() { }
     
     public func combinedState(datasource: DatasourceBox<Value, P, LIT, E>) -> SignalProducer<CompositeStateConcrete, NoError> {
-        return datasource.state.producer.map({ state -> CompositeStateConcrete in
+        return datasource.state.map({ state -> CompositeStateConcrete in
             return CompositeState.with(state) // just return the new state, purging all previous ones
         })
     }
