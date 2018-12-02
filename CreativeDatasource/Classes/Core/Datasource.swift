@@ -36,5 +36,3 @@ public struct DatasourceBox<Value_: Any, P_: Parameters, LIT_: LoadImpulseType, 
 }
 
 public protocol DatasourceError: Error, Equatable { }
-
-public protocol PullToRefreshDatasource : Datasource where LIT == PullToRefreshLoadImpulseType { }

@@ -83,5 +83,4 @@ public enum CompositeState<Value: Any, P: Parameters, LIT: LoadImpulseType, E: D
         }
     }
     
-
 }
