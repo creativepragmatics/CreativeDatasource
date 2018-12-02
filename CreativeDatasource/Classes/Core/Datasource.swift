@@ -10,6 +10,9 @@ public protocol Datasource {
     typealias StateConcrete = State<Value, P, LIT, E>
     
     var state: SignalProducer<StateConcrete, NoError> {get}
+    
+    /// Must return `true` if the datasource sends a `state`
+    /// immediately on subscription.
     var sendsFirstStateSynchronously: Bool {get}
 }
 

@@ -11,13 +11,22 @@ open class PlainListTableViewDatasource<Item: Equatable, P: Parameters, E: Datas
     public var heightAtIndexPath: [IndexPath: CGFloat] = [:]
     private let cells: Property<Cells>
     private let tableViewCellForItem: (Item, IndexPath) -> UITableViewCell
+    private let loadingTableViewCellProducer: (() -> UITableViewCell)
+    private let errorTableViewCellProducer: ((ErrorTableViewCellContent) -> UITableViewCell)
     private let itemSelected: ((Item) -> ())?
     private let scrollViewDidScroll = Signal<Void, NoError>.pipe()
     
-    public init(cells: Property<Cells>, tableViewCellForItem: @escaping (Item, IndexPath) -> UITableViewCell, itemSelected: ((Item) -> ())?) {
+    public init(cells: Property<Cells>,
+                tableViewCellForItem: @escaping (Item, IndexPath) -> UITableViewCell,
+                itemSelected: ((Item) -> ())?,
+                loadingTableViewCellProducer: @escaping (() -> UITableViewCell) = defaultLoadingTableViewCellProducer,
+                errorTableViewCellProducer: @escaping ((ErrorTableViewCellContent) -> UITableViewCell) = defaultErrorTableViewCellProducer
+        ) {
         self.cells = cells
         self.tableViewCellForItem = tableViewCellForItem
         self.itemSelected = itemSelected
+        self.loadingTableViewCellProducer = loadingTableViewCellProducer
+        self.errorTableViewCellProducer = errorTableViewCellProducer
     }
     
     public func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -33,36 +42,35 @@ open class PlainListTableViewDatasource<Item: Equatable, P: Parameters, E: Datas
         case let .contentCell(item):
             return tableViewCellForItem(item, indexPath)
         case .loading:
-            guard let cell = tableView.dequeueReusableCell(withIdentifier: "loadingCell") as? LoadingCell else {
-                return UITableViewCell()
-            }
-            let _ = cell.loadingIndicatorView
-            cell.startAnimating()
-            cell.setNeedsLayout()
-            cell.layoutIfNeeded()
-            return cell
+            return loadingTableViewCellProducer()
         case .error:
-            guard let cell = tableView.dequeueReusableCell(withIdentifier: "undefinedErrorCell") as? ErrorTableViewCell else {
-                return UITableViewCell()
-            }
-            cell.content = .default
-            cell.selectionStyle = .none
-            cell.separatorInset = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 9999)
-            return cell
+            return errorTableViewCellProducer(.default)
         case .empty:
             let cell = UITableViewCell()
             cell.selectionStyle = .none
             cell.separatorInset = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 9999)
             return cell
         case let .noResults(message):
-            guard let cell = tableView.dequeueReusableCell(withIdentifier: "undefinedErrorCell") as? ErrorTableViewCell else {
-                return UITableViewCell()
-            }
-            cell.content = .message(message)
-            cell.selectionStyle = .none
-            cell.separatorInset = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 9999)
-            return cell
+            return errorTableViewCellProducer(.message(message))
         }
+    }
+    
+    public static func defaultErrorTableViewCellProducer(_ content: ErrorTableViewCellContent) -> UITableViewCell {
+        let cell = ErrorTableViewCell(frame: .zero)
+        cell.content = .default
+        cell.selectionStyle = .none
+        cell.separatorInset = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 9999)
+        return cell
+    }
+    
+    public static func defaultLoadingTableViewCellProducer() -> UITableViewCell {
+        let cell = LoadingCell(frame: .zero)
+        cell.startAnimating()
+        cell.setNeedsLayout()
+        cell.layoutIfNeeded()
+        cell.selectionStyle = .none
+        cell.separatorInset = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 9999)
+        return cell
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {

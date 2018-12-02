@@ -44,7 +44,7 @@ open class ErrorTableViewCell : UITableViewCell {
     }
 }
 
-enum ErrorTableViewCellContent {
+public enum ErrorTableViewCellContent {
     case `default`
     case message(String)
 }
