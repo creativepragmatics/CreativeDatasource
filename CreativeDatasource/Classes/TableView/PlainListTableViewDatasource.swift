@@ -9,12 +9,12 @@ open class PlainListTableViewDatasource<Item: Equatable, P: Parameters, E: Datas
     public typealias Cells = PlainListCells<Item, E>
     
     public var heightAtIndexPath: [IndexPath: CGFloat] = [:]
+    public let scrollViewDidScroll = Signal<Void, NoError>.pipe()
     private let cells: Property<Cells>
     private let tableViewCellForItem: (Item, IndexPath) -> UITableViewCell
     private let loadingTableViewCellProducer: (() -> UITableViewCell)
     private let errorTableViewCellProducer: ((ErrorTableViewCellContent) -> UITableViewCell)
     private let itemSelected: ((Item) -> ())?
-    private let scrollViewDidScroll = Signal<Void, NoError>.pipe()
     
     public init(cells: Property<Cells>,
                 tableViewCellForItem: @escaping (Item, IndexPath) -> UITableViewCell,
@@ -105,9 +105,5 @@ open class PlainListTableViewDatasource<Item: Equatable, P: Parameters, E: Datas
     
     func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
         return 0
-    }
-    
-    func retryButtonTapped() {
-        // Override if necessary
     }
 }
