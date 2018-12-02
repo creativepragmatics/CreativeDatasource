@@ -5,9 +5,10 @@ import Dwifft
 open class PlainListTableViewController<Item: Codable & Equatable, P: Parameters, E: DatasourceError> : UIViewController {
     
     public typealias Cell = PlainListCell<Item, E>
+    public typealias Cells = PlainListCells<Item, E>
     public typealias CellToRegister = (UITableViewCell.Type, String)
     
-    open let cells: Property<[Cell]>
+    open let cells: Property<Cells>
     open var refreshControl: UIRefreshControl?
     
     public lazy var tableView: UITableView = {
@@ -40,7 +41,7 @@ open class PlainListTableViewController<Item: Codable & Equatable, P: Parameters
     private let tableViewDatasource: PlainListTableViewDatasource<Item, P, E>
     private var tableViewDiffCalculator: SingleSectionTableViewDiffCalculator<Cell>?
     
-    public init(tableViewDatasource: PlainListTableViewDatasource<Item, P, E>, cells: Property<[Cell]>, cellsToRegister: [CellToRegister], onPullToRefresh: (() -> ())?) {
+    public init(tableViewDatasource: PlainListTableViewDatasource<Item, P, E>, cells: Property<Cells>, cellsToRegister: [CellToRegister], onPullToRefresh: (() -> ())?) {
         self.tableViewDatasource = tableViewDatasource
         self.cellsToRegister = cellsToRegister
         self.cells = cells
@@ -89,21 +90,24 @@ open class PlainListTableViewController<Item: Codable & Equatable, P: Parameters
             .skipRepeats()
             .combinePrevious()
             .startWithValues { [weak self] (previous, next) in
-            guard let self = self else { return }
-            
-            if self.isViewVisible, self.animateTableViewUpdates {
-                if self.tableViewDiffCalculator == nil {
-                    // Use previous cells as initial values such that "next" cells are
-                    // inserted with animations
-                    self.tableViewDiffCalculator = self.createTableViewDiffCalculator(initial: previous)
-                }
-                self.tableViewDiffCalculator?.rows = next
-            } else {
-                // Animations disabled or view invisible - skip animations.
-                self.tableViewDiffCalculator = nil
-                DispatchQueue.main.async { [weak self] in
-                    self?.tableView.reloadData()
-                }
+                self?.updateCells(previous: previous, next: next)
+        }
+    }
+    
+    private func updateCells(previous: Cells, next: Cells) {
+        switch previous {
+        case let .readyToDisplay(previousCells) where isViewVisible && animateTableViewUpdates:
+            if self.tableViewDiffCalculator == nil {
+                // Use previous cells as initial values such that "next" cells are
+                // inserted with animations
+                self.tableViewDiffCalculator = self.createTableViewDiffCalculator(initial: previousCells)
+            }
+            self.tableViewDiffCalculator?.rows = next.cells ?? []
+        case .readyToDisplay, .waitingUntilDatasourceReady:
+            // Animations disabled or view invisible - skip animations.
+            self.tableViewDiffCalculator = nil
+            DispatchQueue.main.async { [weak self] in
+                self?.tableView.reloadData()
             }
         }
     }

@@ -6,28 +6,30 @@ import Result
 open class PlainListTableViewDatasource<Item: Codable & Equatable, P: Parameters, E: DatasourceError>: NSObject, UITableViewDelegate, UITableViewDataSource {
     
     public typealias Cell = PlainListCell<Item, E>
+    public typealias Cells = PlainListCells<Item, E>
     
     public var heightAtIndexPath: [IndexPath: CGFloat] = [:]
-    private let cells: Property<[Cell]>
+    private let cells: Property<Cells>
     private let tableViewCellForItem: (Item, IndexPath) -> UITableViewCell
     private let itemSelected: ((Item) -> ())?
     private let scrollViewDidScroll = Signal<Void, NoError>.pipe()
     
-    public init(cells: Property<[Cell]>, tableViewCellForItem: @escaping (Item, IndexPath) -> UITableViewCell, itemSelected: ((Item) -> ())?) {
+    public init(cells: Property<Cells>, tableViewCellForItem: @escaping (Item, IndexPath) -> UITableViewCell, itemSelected: ((Item) -> ())?) {
         self.cells = cells
         self.tableViewCellForItem = tableViewCellForItem
         self.itemSelected = itemSelected
     }
     
     public func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return cells.value.count
+        guard let cells = cells.value.cells else { return 0 }
+        return cells.count
     }
     
     public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
-        guard indexPath.row < cells.value.count else { return UITableViewCell() }
+        guard let cells = cells.value.cells, indexPath.row < cells.count else { return UITableViewCell() }
         
-        switch cells.value[indexPath.row] {
+        switch cells[indexPath.row] {
         case let .contentCell(item):
             return tableViewCellForItem(item, indexPath)
         case .loading:
@@ -66,7 +68,9 @@ open class PlainListTableViewDatasource<Item: Codable & Equatable, P: Parameters
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         
-        switch cells.value[indexPath.row] {
+        guard let cells = cells.value.cells else { return }
+        
+        switch cells[indexPath.row] {
         case let .contentCell(item):
             itemSelected?(item)
         default:
