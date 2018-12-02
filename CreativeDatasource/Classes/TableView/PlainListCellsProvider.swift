@@ -13,7 +13,7 @@ public struct PlainListCellsProvider<Value: Codable & Equatable, Item: Codable &
     public let cells: Property<Cells>
     
     public init(compositeDatasource: CompositeDatasourceConcrete, valueToCells: @escaping ValueToCells, noResultsCell: Cell = .empty) {
-        self.cells = Property(initial: Cells.waitingUntilDatasourceReady, then: PlainListCellsProvider.cellsFromStateProducer(compositeDatasource: compositeDatasource, valueToCells: valueToCells, noResultsCell: noResultsCell))
+        self.cells = Property(initial: Cells.datasourceNotReady, then: PlainListCellsProvider.cellsFromStateProducer(compositeDatasource: compositeDatasource, valueToCells: valueToCells, noResultsCell: noResultsCell))
     }
     
     private static func cellsFromStateProducer(compositeDatasource: CompositeDatasourceConcrete, valueToCells: @escaping ValueToCells, noResultsCell: Cell) -> SignalProducer<Cells, NoError> {
@@ -26,7 +26,7 @@ public struct PlainListCellsProvider<Value: Codable & Equatable, Item: Codable &
                 // which are most likely used when a view is first shown, we stay synchronous
                 // because we don't want a white screen when cached data is available.
                 switch state {
-                case .loading, .initial:
+                case .loading, .datasourceNotReady:
                     return cells(state: state, valueToCells: valueToCells, noResultsCell: noResultsCell)
                 case .success, .error:
                     // Start in background and return on main thread
@@ -44,8 +44,8 @@ public struct PlainListCellsProvider<Value: Codable & Equatable, Item: Codable &
         }
         
         switch state {
-        case .initial:
-            return SignalProducer(value: Cells.waitingUntilDatasourceReady)
+        case .datasourceNotReady:
+            return SignalProducer(value: Cells.datasourceNotReady)
         case let .loading(cached, _):
             if let cells = boxedValueToCells(cached), cells.count > 0 {
                 return SignalProducer(value: Cells.readyToDisplay(cells))

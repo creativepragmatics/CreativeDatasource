@@ -4,6 +4,8 @@ import Result
 
 /// Maintains state coming from multiple sources (remote and local).
 /// It is able to support pagination, live feeds, etc in the remote datasource (yet to be implemented).
+/// State coming from the remote datasource is treated as preferential over state from
+/// the local datasource. You can think of the local datasource as cache.
 public struct CompositeDatasource<Value: Codable, P: Parameters, LIT: LoadImpulseType, E: DatasourceError> {
     
     public typealias CompositeStateConcrete = CompositeState<Value, P, LIT, E>
@@ -22,7 +24,7 @@ public struct CompositeDatasource<Value: Codable, P: Parameters, LIT: LoadImpuls
                 persister: StatePersisterConcrete? = nil,
                 responseCombiner: ResponseCombinerConcrete) {
         self.loadImpulseEmitter = loadImpulseEmitter
-        self.compositeState = Property<CompositeState>(initial: .initial, then: CompositeDatasource.compositeStatesProducer(loadImpulseEmitter: loadImpulseEmitter,localDatasource: localDatasource, remoteDatasource: remoteDatasource, persister: persister, responseCombiner: responseCombiner))
+        self.compositeState = Property<CompositeState>(initial: .datasourceNotReady, then: CompositeDatasource.compositeStatesProducer(loadImpulseEmitter: loadImpulseEmitter,localDatasource: localDatasource, remoteDatasource: remoteDatasource, persister: persister, responseCombiner: responseCombiner))
     }   
     
     public func load(_ loadImpulse: LoadImpulse<P, LIT>) -> SignalProducer<RefreshingEnded, NoError> {
@@ -37,7 +39,7 @@ public struct CompositeDatasource<Value: Codable, P: Parameters, LIT: LoadImpuls
                 switch fetchState {
                 case .error, .success:
                     return true
-                case .initial, .loading:
+                case .datasourceNotReady, .loading:
                     return false
                 }
             })
@@ -63,7 +65,7 @@ public struct CompositeDatasource<Value: Codable, P: Parameters, LIT: LoadImpuls
     }
     
     private static func datasourceState(_ datasource: DatasourceConcrete?) -> SignalProducer<CompositeStateConcrete, NoError> {
-        let initialState = SignalProducer<CompositeStateConcrete, NoError>(value: .initial)
+        let initialState = SignalProducer<CompositeStateConcrete, NoError>(value: .datasourceNotReady)
         guard let datasource = datasource else { return initialState }
         
         let compositeStates = datasource.state.map({ CompositeState.with($0) })
@@ -77,7 +79,7 @@ public struct CompositeDatasource<Value: Codable, P: Parameters, LIT: LoadImpuls
                                                 responseCombiner: ResponseCombinerConcrete)
         -> SignalProducer<CompositeStateConcrete, NoError> {
             
-            let initialStateProducer = SignalProducer(value: CompositeStateConcrete.initial)
+            let initialStateProducer = SignalProducer(value: CompositeStateConcrete.datasourceNotReady)
             
             let localState = datasourceState(localDatasource)
             
@@ -115,8 +117,8 @@ public struct CompositeDatasource<Value: Codable, P: Parameters, LIT: LoadImpuls
                     // If fetchRemote == nil, use local as main datasource and return immediately:
                     guard let _ = remoteDatasource else {
                         switch local {
-                        case .initial:
-                            return .initial
+                        case .datasourceNotReady:
+                            return .datasourceNotReady
                         case let .loading(_, loadImpulse):
                             return CompositeState.loading(cached: nil, loadImpulse: loadImpulse)
                         case let .success(valueBox, loadImpulse):
@@ -149,7 +151,7 @@ public struct CompositeDatasource<Value: Codable, P: Parameters, LIT: LoadImpuls
                             return unifiedStateForRemoteError(error: error, remoteRefresh: remoteRefresh, remoteSuccess: remoteSuccess, local: local, currentParameters: currentParameters)
                                 ?? fallbackCompositeState(remote: remote)
                         }
-                    case .initial, .success:
+                    case .datasourceNotReady, .success:
                         return fallbackCompositeState(remote: remote)
                     }
                 })
@@ -160,8 +162,8 @@ public struct CompositeDatasource<Value: Codable, P: Parameters, LIT: LoadImpuls
     private static func persist(remoteState: CompositeStateConcrete, statePersister: StatePersisterConcrete) {
         let stateToPersist: State<Value, P, LIT, E> = {
             switch remoteState {
-            case .initial:
-                return .initial
+            case .datasourceNotReady:
+                return .datasourceNotReady
             case let .loading(cached, loadImpulse):
                 // Cached is used by "remote" for previously (successfully) loaded pages!
                 if let cached = cached {
@@ -234,15 +236,15 @@ public struct CompositeDatasource<Value: Codable, P: Parameters, LIT: LoadImpuls
     /// datasources have failed to provide a cached state.
     private static func fallbackCompositeState(remote: CompositeStateConcrete) -> CompositeStateConcrete {
         switch remote {
-        case .initial:
-            return .initial
+        case .datasourceNotReady:
+            return .datasourceNotReady
         case let .loading(_, loadImpulse):
             return .loading(cached: nil, loadImpulse: loadImpulse)
         case .success:
             // This happens when the current success state's tag doesn't match the
             // current tag. Return .initial to force views into a blank state, wiping
             // previously displayed items.
-            return .initial
+            return .datasourceNotReady
         case let .error(error, _, loadImpulse):
             return CompositeState.error(error: error, cached: nil, loadImpulse: loadImpulse)
         }

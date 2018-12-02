@@ -1,7 +1,7 @@
 import Foundation
 
 public enum State<Value: Codable, P: Parameters, LIT: LoadImpulseType, E: DatasourceError>: Equatable {
-    case initial
+    case datasourceNotReady
     case loading(loadImpulse: LoadImpulse<P, LIT>)
     case success(valueBox: StrongEqualityValueBox<Value>, loadImpulse: LoadImpulse<P, LIT>)
     case error(error: E, loadImpulse: LoadImpulse<P, LIT>)
@@ -10,14 +10,14 @@ public enum State<Value: Codable, P: Parameters, LIT: LoadImpulseType, E: Dataso
         switch self {
         case let .success(value, loadImpulse) where loadImpulse.parameters.isCacheCompatible(parameters):
             return value
-        case .initial, .loading, .success, .error:
+        case .datasourceNotReady, .loading, .success, .error:
             return nil
         }
     }
     
     var loadImpulse: LoadImpulse<P, LIT>? {
         switch self {
-        case .initial:
+        case .datasourceNotReady:
             return nil
         case let .loading(loadImpulse):
             return loadImpulse
@@ -34,7 +34,7 @@ public enum State<Value: Codable, P: Parameters, LIT: LoadImpulseType, E: Dataso
     
     public static func == (lhs: State, rhs: State) -> Bool {
         switch (lhs, rhs) {
-        case (.initial, .initial):
+        case (.datasourceNotReady, .datasourceNotReady):
             return true
         case (.loading(let lhs), .loading(let rhs)):
             return lhs == rhs
@@ -68,7 +68,7 @@ extension State : Codable {
         
         static func with(_ state: State) -> Case {
             switch state {
-            case .initial: return .initial
+            case .datasourceNotReady: return .initial
             case .loading: return .loading
             case .success: return .success
             case .error: return .error
@@ -78,7 +78,7 @@ extension State : Codable {
         func state(loadImpulse: LoadImpulse<P, LIT>?, value: Value?, error: E?) -> State? {
             switch self {
             case .initial:
-                return .initial
+                return .datasourceNotReady
             case .loading:
                 if let loadImpulse = loadImpulse {
                     return State<Value, P, LIT, E>.loading(loadImpulse: loadImpulse)
@@ -137,7 +137,7 @@ extension State : Codable {
         try container.encode(enumCase.rawValue, forKey: .enumCase)
         
         switch self {
-        case .initial:
+        case .datasourceNotReady:
             break
         case let .loading(loadImpulse):
             try container.encode(loadImpulse, forKey: .loadImpulse)

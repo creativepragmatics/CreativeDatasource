@@ -103,7 +103,7 @@ open class PlainListTableViewController<Item: Codable & Equatable, P: Parameters
                 self.tableViewDiffCalculator = self.createTableViewDiffCalculator(initial: previousCells)
             }
             self.tableViewDiffCalculator?.rows = next.cells ?? []
-        case .readyToDisplay, .waitingUntilDatasourceReady:
+        case .readyToDisplay, .datasourceNotReady:
             // Animations disabled or view invisible - skip animations.
             self.tableViewDiffCalculator = nil
             DispatchQueue.main.async { [weak self] in

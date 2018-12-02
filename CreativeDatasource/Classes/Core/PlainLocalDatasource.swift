@@ -24,7 +24,7 @@ public struct PlainLocalDatasource<Value_: Codable, P_: Parameters, LIT_: LoadIm
         self.loadingMode = loadingMode
         switch loadingMode {
         case .synchronously:
-            let initialState = persister.load() ?? StateConcrete.initial
+            let initialState = persister.load() ?? StateConcrete.datasourceNotReady
             self.state = SignalProducer(value: initialState)
         case .waitForLoadImpulse:
             self.state = PlainLocalDatasource.asyncStateProducer(persister: persister, loadImpulseEmitter: loadImpulseEmitter, cacheLoadError: cacheLoadError, loadingMode: loadingMode)

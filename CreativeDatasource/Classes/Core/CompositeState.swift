@@ -1,7 +1,7 @@
 import Foundation
 
 public enum CompositeState<Value: Codable, P: Parameters, LIT: LoadImpulseType, E: DatasourceError>: Equatable {
-    case initial
+    case datasourceNotReady
     case loading(cached: StrongEqualityValueBox<Value>?, loadImpulse: LoadImpulse<P, LIT>)
     case success(valueBox: StrongEqualityValueBox<Value>, loadImpulse: LoadImpulse<P, LIT>)
     case error(error: E, cached: StrongEqualityValueBox<Value>?, loadImpulse: LoadImpulse<P, LIT>)
@@ -9,7 +9,7 @@ public enum CompositeState<Value: Codable, P: Parameters, LIT: LoadImpulseType, 
     /// Checked access to value
     func value(_ parameters: P) -> StrongEqualityValueBox<Value>? {
         switch self {
-        case .initial:
+        case .datasourceNotReady:
             return nil
         case let .loading(cached, loadImpulse) where loadImpulse.parameters.isCacheCompatible(parameters):
             return cached
@@ -25,7 +25,7 @@ public enum CompositeState<Value: Codable, P: Parameters, LIT: LoadImpulseType, 
     /// Unchecked access to value. Discouraged.
     var valueUnchecked: Value? {
         switch self {
-        case .initial:
+        case .datasourceNotReady:
             return nil
         case let .loading(cached, _):
             return cached?.value
@@ -38,7 +38,7 @@ public enum CompositeState<Value: Codable, P: Parameters, LIT: LoadImpulseType, 
     
     static func with(_ state: State<Value, P, LIT, E>) -> CompositeState {
         switch state {
-        case .initial: return .initial
+        case .datasourceNotReady: return .datasourceNotReady
         case let .loading(loadImpulse): return .loading(cached: nil, loadImpulse: loadImpulse)
         case let .success(value, loadImpulse): return .success(valueBox: value, loadImpulse: loadImpulse)
         case let .error(error, loadImpulse): return .error(error: error, cached: nil, loadImpulse: loadImpulse)
@@ -47,7 +47,7 @@ public enum CompositeState<Value: Codable, P: Parameters, LIT: LoadImpulseType, 
     
     var loadImpulse: LoadImpulse<P, LIT>? {
         switch self {
-        case .initial:
+        case .datasourceNotReady:
             return nil
         case let .loading(_, loadImpulse):
             return loadImpulse
@@ -64,7 +64,7 @@ public enum CompositeState<Value: Codable, P: Parameters, LIT: LoadImpulseType, 
     
     public static func == (lhs: CompositeState, rhs: CompositeState) -> Bool {
         switch (lhs, rhs) {
-        case (.initial, .initial):
+        case (.datasourceNotReady, .datasourceNotReady):
             return true
         case (.loading(let lhs), .loading(let rhs)):
             if lhs.loadImpulse != rhs.loadImpulse { return false }

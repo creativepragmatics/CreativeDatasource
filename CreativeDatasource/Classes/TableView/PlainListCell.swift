@@ -9,12 +9,12 @@ public enum PlainListCell<ContentCell: Codable & Equatable, E: DatasourceError>:
 }
 
 public enum PlainListCells<ContentCell: Codable & Equatable, E: DatasourceError>: Equatable {
-    case waitingUntilDatasourceReady
+    case datasourceNotReady
     case readyToDisplay([PlainListCell<ContentCell, E>])
     
     var cells: [PlainListCell<ContentCell, E>]? {
         switch self {
-        case .waitingUntilDatasourceReady: return nil
+        case .datasourceNotReady: return nil
         case let .readyToDisplay(cells): return cells
         }
     }
