@@ -1,6 +1,6 @@
 import Foundation
 
-public enum State<Value: Codable, P: Parameters, LIT: LoadImpulseType, E: DatasourceError>: Equatable {
+public enum State<Value: Any, P: Parameters, LIT: LoadImpulseType, E: DatasourceError>: Equatable {
     case datasourceNotReady
     case loading(loadImpulse: LoadImpulse<P, LIT>)
     case success(valueBox: StrongEqualityValueBox<Value>, loadImpulse: LoadImpulse<P, LIT>)
@@ -51,7 +51,7 @@ public enum State<Value: Codable, P: Parameters, LIT: LoadImpulseType, E: Dataso
     }
 }
 
-extension State : Codable {
+extension State : Codable where Value: Codable, LIT: Codable, P: Codable, E: Codable {
     
     private enum CodingKeys: String, CodingKey {
         case enumCase

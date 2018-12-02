@@ -19,7 +19,7 @@ public extension PullToRefreshLoadImpulse {
 }
 
 // Inherits from String so we get Equatable & Codable conformance for free
-public enum PullToRefreshLoadImpulseType : String, LoadImpulseType {
+public enum PullToRefreshLoadImpulseType : String, LoadImpulseType, Codable {
     
     case initial
     case pullToRefresh

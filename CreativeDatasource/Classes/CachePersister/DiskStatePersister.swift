@@ -1,7 +1,7 @@
 import Foundation
 import Cache
 
-public struct DiskStatePersister<T: Codable, P: Parameters, LIT: LoadImpulseType, E: DatasourceError>: StatePersister {
+public struct DiskStatePersister<T: Codable, P: Parameters & Codable, LIT: LoadImpulseType & Codable, E: DatasourceError & Codable>: StatePersister {
     
     public typealias StatePersistenceKey = String
     private typealias PersistedState = State<T, P, LIT, E>

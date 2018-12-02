@@ -2,7 +2,7 @@ import Foundation
 import ReactiveSwift
 import Dwifft
 
-open class PlainListTableViewController<Item: Codable & Equatable, P: Parameters, E: DatasourceError> : UIViewController {
+open class PlainListTableViewController<Item: Equatable, P: Parameters, E: DatasourceError> : UIViewController {
     
     public typealias Cell = PlainListCell<Item, E>
     public typealias Cells = PlainListCells<Item, E>

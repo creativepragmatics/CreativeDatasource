@@ -8,7 +8,7 @@ import Result
 /// In case each new response supersedes all other responses (for a simple pull-to-refresh list),
 /// the combiner need not do much (SupersedingResponseCombiner).
 public protocol ResponseCombiner {
-    associatedtype Value: Codable
+    associatedtype Value: Any
     associatedtype P: Parameters
     associatedtype LIT: LoadImpulseType
     associatedtype E: DatasourceError
@@ -23,7 +23,7 @@ public extension ResponseCombiner {
     }
 }
 
-public struct ResponseCombinerBox<Value_: Codable, P_: Parameters, LIT_: LoadImpulseType, E_: DatasourceError>: ResponseCombiner {
+public struct ResponseCombinerBox<Value_: Any, P_: Parameters, LIT_: LoadImpulseType, E_: DatasourceError>: ResponseCombiner {
     public typealias Value = Value_
     public typealias P = P_
     public typealias LIT = LIT_
@@ -41,7 +41,7 @@ public struct ResponseCombinerBox<Value_: Codable, P_: Parameters, LIT_: LoadImp
     }
 }
 
-public struct SupersedingResponseCombiner<Value_: Codable, P_: Parameters, LIT_: LoadImpulseType, E_: DatasourceError> : ResponseCombiner {
+public struct SupersedingResponseCombiner<Value_: Any, P_: Parameters, LIT_: LoadImpulseType, E_: DatasourceError> : ResponseCombiner {
     public typealias Value = Value_
     public typealias P = P_
     public typealias LIT = LIT_

@@ -1,6 +1,6 @@
 import Foundation
 
-public enum CompositeState<Value: Codable, P: Parameters, LIT: LoadImpulseType, E: DatasourceError>: Equatable {
+public enum CompositeState<Value: Any, P: Parameters, LIT: LoadImpulseType, E: DatasourceError>: Equatable {
     case datasourceNotReady
     case loading(cached: StrongEqualityValueBox<Value>?, loadImpulse: LoadImpulse<P, LIT>)
     case success(valueBox: StrongEqualityValueBox<Value>, loadImpulse: LoadImpulse<P, LIT>)

@@ -3,7 +3,7 @@ import ReactiveSwift
 import Result
 
 public protocol Datasource {
-    associatedtype Value: Codable
+    associatedtype Value: Any
     associatedtype P: Parameters
     associatedtype LIT: LoadImpulseType
     associatedtype E: DatasourceError
@@ -19,7 +19,7 @@ public extension Datasource {
     }
 }
 
-public struct DatasourceBox<Value_: Codable, P_: Parameters, LIT_: LoadImpulseType, E_: DatasourceError>: Datasource {
+public struct DatasourceBox<Value_: Any, P_: Parameters, LIT_: LoadImpulseType, E_: DatasourceError>: Datasource {
     public typealias Value = Value_
     public typealias P = P_
     public typealias LIT = LIT_
@@ -35,6 +35,6 @@ public struct DatasourceBox<Value_: Codable, P_: Parameters, LIT_: LoadImpulseTy
     }
 }
 
-public protocol DatasourceError: Error, Equatable, Codable { }
+public protocol DatasourceError: Error, Equatable { }
 
 public protocol PullToRefreshDatasource : Datasource where LIT == PullToRefreshLoadImpulseType { }

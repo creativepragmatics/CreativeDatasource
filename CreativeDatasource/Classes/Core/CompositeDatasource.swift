@@ -6,7 +6,7 @@ import Result
 /// It is able to support pagination, live feeds, etc in the remote datasource (yet to be implemented).
 /// State coming from the remote datasource is treated as preferential over state from
 /// the local datasource. You can think of the local datasource as cache.
-public struct CompositeDatasource<Value: Codable, P: Parameters, LIT: LoadImpulseType, E: DatasourceError> {
+public struct CompositeDatasource<Value: Any, P: Parameters, LIT: LoadImpulseType, E: DatasourceError> {
     
     public typealias CompositeStateConcrete = CompositeState<Value, P, LIT, E>
     public typealias DatasourceConcrete = DatasourceBox<Value, P, LIT, E>

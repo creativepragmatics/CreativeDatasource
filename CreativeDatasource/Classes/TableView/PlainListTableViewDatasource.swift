@@ -3,7 +3,7 @@ import UIKit
 import ReactiveSwift
 import Result
 
-open class PlainListTableViewDatasource<Item: Codable & Equatable, P: Parameters, E: DatasourceError>: NSObject, UITableViewDelegate, UITableViewDataSource {
+open class PlainListTableViewDatasource<Item: Equatable, P: Parameters, E: DatasourceError>: NSObject, UITableViewDelegate, UITableViewDataSource {
     
     public typealias Cell = PlainListCell<Item, E>
     public typealias Cells = PlainListCells<Item, E>

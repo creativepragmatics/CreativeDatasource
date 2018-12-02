@@ -2,7 +2,7 @@ import Foundation
 import ReactiveSwift
 import Result
 
-public struct PlainLocalDatasource<Value_: Codable, P_: Parameters, LIT_: LoadImpulseType, E_: DatasourceError> : Datasource {
+public struct PlainLocalDatasource<Value_: Any, P_: Parameters, LIT_: LoadImpulseType, E_: DatasourceError> : Datasource {
     public typealias Value = Value_
     public typealias LIT = LIT_
     public typealias P = P_

@@ -1,6 +1,6 @@
 import Foundation
 
-public protocol Parameters : Codable, Equatable {
+public protocol Parameters : Equatable {
     
     /// Returns true if candidate can be used as a
     /// cache version of self, or vice versa.

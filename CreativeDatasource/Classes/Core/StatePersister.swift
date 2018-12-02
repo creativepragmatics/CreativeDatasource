@@ -1,7 +1,7 @@
 import Foundation
 
 public protocol StatePersister {
-    associatedtype Value: Codable
+    associatedtype Value: Any
     associatedtype P: Parameters
     associatedtype LIT: LoadImpulseType
     associatedtype E: DatasourceError
@@ -17,7 +17,7 @@ public extension StatePersister {
     }
 }
 
-public struct StatePersisterBox<Value_: Codable, P_: Parameters, LIT_: LoadImpulseType, E_: DatasourceError> : StatePersister {
+public struct StatePersisterBox<Value_: Any, P_: Parameters, LIT_: LoadImpulseType, E_: DatasourceError> : StatePersister {
     public typealias Value = Value_
     public typealias P = P_
     public typealias LIT = LIT_

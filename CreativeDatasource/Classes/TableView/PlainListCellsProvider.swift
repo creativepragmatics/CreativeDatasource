@@ -2,7 +2,7 @@ import Foundation
 import ReactiveSwift
 import Result
 
-public struct PlainListCellsProvider<Value: Codable & Equatable, Item: Codable & Equatable, P: Parameters, E: DatasourceError> {
+public struct PlainListCellsProvider<Value: Equatable, Item: Equatable, P: Parameters, E: DatasourceError> {
     
     public typealias Cell = PlainListCell<Item, E>
     public typealias Cells = PlainListCells<Item, E>

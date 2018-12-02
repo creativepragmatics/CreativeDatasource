@@ -1,6 +1,6 @@
 import Foundation
 
-public struct LoadImpulse<P: Parameters, LIT : LoadImpulseType>: Equatable, Codable {
+public struct LoadImpulse<P: Parameters, LIT : LoadImpulseType>: Equatable {
     
     var parameters: P
     let loadImpulseType: LIT
@@ -19,6 +19,8 @@ public struct LoadImpulse<P: Parameters, LIT : LoadImpulseType>: Equatable, Coda
     }
 }
 
-public protocol LoadImpulseType : Equatable, Codable {
+extension LoadImpulse : Codable where P: Codable, LIT: Codable {}
+
+public protocol LoadImpulseType : Equatable {
     static var initialValue: Self {get}
 }
