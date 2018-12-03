@@ -2,11 +2,10 @@ import Foundation
 import ReactiveSwift
 import Dwifft
 
-open class PlainListTableViewController<Item: Equatable, P: Parameters, E: DatasourceError> : UIViewController {
+open class SingleSectionTableViewController<DatasourceItem: Equatable, SelectableItem: Equatable, Id: CellId, P: Parameters, E: DatasourceError> : UIViewController {
     
-    public typealias Cell = PlainListCell<Item, E>
-    public typealias Cells = PlainListCells<Item, E>
-    public typealias CellToRegister = (UITableViewCell.Type, String)
+    public typealias Cell = TableViewCell<SelectableItem, Id>
+    public typealias Cells = TableViewCells<SelectableItem, Id>
     
     open let cells: Property<Cells>
     open var refreshControl: UIRefreshControl?
@@ -32,18 +31,15 @@ open class PlainListTableViewController<Item: Equatable, P: Parameters, E: Datas
     public var animateTableViewUpdates = true
     public var onPullToRefresh: (() -> ())?
     
-    private let cellsToRegister: [CellToRegister]
-    
     open var isViewVisible: Bool {
         return viewIfLoaded?.window != nil && view.alpha > 0.001
     }
     
-    private let tableViewDatasource: PlainListTableViewDatasource<Item, P, E>
+    private let tableViewDatasource: TableViewDatasource<DatasourceItem, Id, P, E>
     private var tableViewDiffCalculator: SingleSectionTableViewDiffCalculator<Cell>?
     
-    public init(tableViewDatasource: PlainListTableViewDatasource<Item, P, E>, cells: Property<Cells>, cellsToRegister: [CellToRegister], onPullToRefresh: (() -> ())?) {
+    public init(tableViewDatasource: TableViewDatasource<DatasourceItem, Id, P, E>, cells: Property<Cells>, onPullToRefresh: (() -> ())?) {
         self.tableViewDatasource = tableViewDatasource
-        self.cellsToRegister = cellsToRegister
         self.cells = cells
         self.onPullToRefresh = onPullToRefresh
         super.init(nibName: nil, bundle: nil)
@@ -66,10 +62,6 @@ open class PlainListTableViewController<Item: Equatable, P: Parameters, E: Datas
         tableView.dataSource = tableViewDatasource
         tableView.tableFooterView = UIView(frame: .zero)
         
-        registerItemCells()
-        
-        tableView.register(LoadingCell.self, forCellReuseIdentifier: "loadingCell")
-        tableView.register(ErrorTableViewCell.self, forCellReuseIdentifier: "undefinedErrorCell")
         tableView.rowHeight = UITableView.automaticDimension
         tableView.estimatedRowHeight = estimatedRowHeight
         
@@ -89,7 +81,8 @@ open class PlainListTableViewController<Item: Equatable, P: Parameters, E: Datas
         cells.producer
             .skipRepeats()
             .combinePrevious()
-            .startWithValues { [weak self] (previous, next) in
+            .startWithValues { [weak self] arg in
+                let (previous, next) = arg
                 self?.updateCells(previous: previous, next: next)
         }
     }
@@ -113,17 +106,10 @@ open class PlainListTableViewController<Item: Equatable, P: Parameters, E: Datas
     }
     
     private func createTableViewDiffCalculator(initial: [Cell]) -> SingleSectionTableViewDiffCalculator<Cell> {
-        let c = SingleSectionTableViewDiffCalculator<Cell>(tableView: tableView, initialRows: initial)
+        let c = SingleSectionTableViewDiffCalculator<TableViewCell>(tableView: tableView, initialRows: initial)
         c.insertionAnimation = .fade
         c.deletionAnimation = .fade
         return c
-    }
-    
-    func registerItemCells() {
-        let genericCellsToRegister: [CellToRegister] = [(LoadingCell.self, "loadingCell"), (ErrorTableViewCell.self, "undefinedErrorCell")]
-        (cellsToRegister + genericCellsToRegister).forEach { (type, identifier) in
-            tableView.register(type, forCellReuseIdentifier: identifier)
-        }
     }
     
     @objc func pullToRefresh() {

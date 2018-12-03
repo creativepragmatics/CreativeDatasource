@@ -3,13 +3,17 @@ import UIKit
 
 open class ErrorTableViewCell : UITableViewCell {
     
-    var content: ErrorTableViewCellContent = .default {
+    public var content: ErrorTableViewCellContent = .default {
         didSet {
             refreshContent()
         }
     }
     
-    lazy var label: UILabel = {
+    open var defaultErrorMessage: String {
+        return NSLocalizedString("An error occurred while loading.\nPlease try again!", comment: "")
+    }
+    
+    public lazy var label: UILabel = {
         let l = UILabel()
         l.font = UIFont.preferredFont(forTextStyle: UIFont.TextStyle.body)
         l.textColor = .gray
@@ -27,6 +31,20 @@ open class ErrorTableViewCell : UITableViewCell {
         return l
     }()
     
+    public override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
+        super.init(style: style, reuseIdentifier: reuseIdentifier)
+        commonInit()
+    }
+    
+    public init() {
+        super.init(style: .default, reuseIdentifier: nil)
+        commonInit()
+    }
+    
+    public required init?(coder aDecoder: NSCoder) {
+        fatalError("ErrorTableViewCell cannot be used from a storyboard")
+    }
+    
     override open func willMove(toSuperview newSuperview: UIView?) {
         super.willMove(toSuperview: newSuperview)
         refreshContent()
@@ -36,15 +54,21 @@ open class ErrorTableViewCell : UITableViewCell {
         label.text = {
             switch content {
             case .default:
-                return NSLocalizedString("Ein Fehler ist beim Laden aufgetreten.\nBitte versuchen Sie es erneut!", comment: "")
+                return defaultErrorMessage
             case let .message(string):
                 return string
             }
         }()
     }
+    
+    open func commonInit() {
+        backgroundColor = .white
+        separatorInset = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 9999)
+        selectionStyle = .none
+    }
 }
 
-public enum ErrorTableViewCellContent {
+public enum ErrorTableViewCellContent: Equatable {
     case `default`
     case message(String)
 }

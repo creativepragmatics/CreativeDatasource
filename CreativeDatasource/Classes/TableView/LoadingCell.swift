@@ -18,10 +18,19 @@ open class LoadingCell : UITableViewCell {
     
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
-        
+        commonInit()
+    }
+    
+    init() {
+        super.init(style: .default, reuseIdentifier: nil)
+        commonInit()
+    }
+    
+    private func commonInit() {
         backgroundColor = .white
         separatorInset = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 9999)
         selectionStyle = .none
+        startAnimating()
     }
     
     func startAnimating() {

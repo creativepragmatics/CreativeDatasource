@@ -38,4 +38,7 @@ public struct DatasourceBox<Value_: Any, P_: Parameters, LIT_: LoadImpulseType, 
     }
 }
 
-public protocol DatasourceError: Error, Equatable { }
+public protocol DatasourceError: Error, Equatable {
+    
+    var cellContent: ErrorTableViewCellContent {get}
+}
