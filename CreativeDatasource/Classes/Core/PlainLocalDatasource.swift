@@ -8,8 +8,8 @@ public struct PlainCacheDatasource<Value_: Any, P_: Parameters, LIT_: LoadImpuls
     public typealias P = P_
     public typealias E = E_
     public typealias StateConcrete = State<Value, P, LIT, E>
-    public typealias StatePersisterConcrete = StatePersisterBox<Value, P, LIT, E>
-    public typealias LoadImpulseEmitterConcrete = LoadImpulseEmitterBox<P, LIT>
+    public typealias StatePersisterConcrete = AnyStatePersister<Value, P, LIT, E>
+    public typealias LoadImpulseEmitterConcrete = AnyLoadImpulseEmitter<P, LIT>
     
     public let state: SignalProducer<StateConcrete, NoError>
     public var sendsFirstStateSynchronously: Bool {

@@ -2,12 +2,11 @@ import Foundation
 import ReactiveSwift
 import Dwifft
 
-open class SingleSectionTableViewController<DatasourceItem: Equatable, SelectableItem: Equatable, Id: CellId, P: Parameters, E: DatasourceError> : UIViewController {
+open class SingleSectionTableViewController<DatasourceValue: Equatable, Cell: ListItem, P: Parameters, E: DatasourceError> : UIViewController {
     
-    public typealias Cell = TableViewCell<SelectableItem, Id>
-    public typealias Cells = TableViewCells<SelectableItem, Id>
+    public typealias Cells = SingleSectionListItems<Cell>
+    public typealias TableViewDatasource = SingleSectionTableViewDatasource<DatasourceValue, Cell, P, E>
     
-    open let cells: Property<Cells>
     open var refreshControl: UIRefreshControl?
     
     public lazy var tableView: UITableView = {
@@ -35,12 +34,11 @@ open class SingleSectionTableViewController<DatasourceItem: Equatable, Selectabl
         return viewIfLoaded?.window != nil && view.alpha > 0.001
     }
     
-    private let tableViewDatasource: TableViewDatasource<DatasourceItem, Id, P, E>
+    private let tableViewDatasource: TableViewDatasource
     private var tableViewDiffCalculator: SingleSectionTableViewDiffCalculator<Cell>?
     
-    public init(tableViewDatasource: TableViewDatasource<DatasourceItem, Id, P, E>, cells: Property<Cells>, onPullToRefresh: (() -> ())?) {
+    public init(tableViewDatasource: TableViewDatasource, onPullToRefresh: (() -> ())?) {
         self.tableViewDatasource = tableViewDatasource
-        self.cells = cells
         self.onPullToRefresh = onPullToRefresh
         super.init(nibName: nil, bundle: nil)
     }
@@ -78,7 +76,7 @@ open class SingleSectionTableViewController<DatasourceItem: Equatable, Selectabl
         }
         
         // Update table with most current cells
-        cells.producer
+        tableViewDatasource.cells.producer
             .skipRepeats()
             .combinePrevious()
             .startWithValues { [weak self] arg in
@@ -95,7 +93,7 @@ open class SingleSectionTableViewController<DatasourceItem: Equatable, Selectabl
                 // inserted with animations
                 self.tableViewDiffCalculator = self.createTableViewDiffCalculator(initial: previousCells)
             }
-            self.tableViewDiffCalculator?.rows = next.cells ?? []
+            self.tableViewDiffCalculator?.rows = next.items ?? []
         case .readyToDisplay, .datasourceNotReady:
             // Animations disabled or view invisible - skip animations.
             self.tableViewDiffCalculator = nil
@@ -106,7 +104,7 @@ open class SingleSectionTableViewController<DatasourceItem: Equatable, Selectabl
     }
     
     private func createTableViewDiffCalculator(initial: [Cell]) -> SingleSectionTableViewDiffCalculator<Cell> {
-        let c = SingleSectionTableViewDiffCalculator<TableViewCell>(tableView: tableView, initialRows: initial)
+        let c = SingleSectionTableViewDiffCalculator<Cell>(tableView: tableView, initialRows: initial)
         c.insertionAnimation = .fade
         c.deletionAnimation = .fade
         return c

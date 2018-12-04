@@ -12,12 +12,12 @@ public protocol StatePersister {
 }
 
 public extension StatePersister {
-    var boxed: StatePersisterBox<Value, P, LIT, E> {
-        return StatePersisterBox(self)
+    public var any: AnyStatePersister<Value, P, LIT, E> {
+        return AnyStatePersister(self)
     }
 }
 
-public struct StatePersisterBox<Value_: Any, P_: Parameters, LIT_: LoadImpulseType, E_: DatasourceError> : StatePersister {
+public struct AnyStatePersister<Value_: Any, P_: Parameters, LIT_: LoadImpulseType, E_: DatasourceError> : StatePersister {
     public typealias Value = Value_
     public typealias P = P_
     public typealias LIT = LIT_

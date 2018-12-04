@@ -17,12 +17,12 @@ public protocol Datasource {
 }
 
 public extension Datasource {
-    var boxed: DatasourceBox<Value, P, LIT, E> {
-        return DatasourceBox(self)
+    public var any: AnyDatasource<Value, P, LIT, E> {
+        return AnyDatasource(self)
     }
 }
 
-public struct DatasourceBox<Value_: Any, P_: Parameters, LIT_: LoadImpulseType, E_: DatasourceError>: Datasource {
+public struct AnyDatasource<Value_: Any, P_: Parameters, LIT_: LoadImpulseType, E_: DatasourceError>: Datasource {
     public typealias Value = Value_
     public typealias P = P_
     public typealias LIT = LIT_

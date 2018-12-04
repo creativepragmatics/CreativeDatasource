@@ -11,12 +11,12 @@ public protocol LoadImpulseEmitter {
 }
 
 public extension LoadImpulseEmitter {
-    var boxed: LoadImpulseEmitterBox<P, LIT> {
-        return LoadImpulseEmitterBox(self)
+    public var any: AnyLoadImpulseEmitter<P, LIT> {
+        return AnyLoadImpulseEmitter(self)
     }
 }
 
-public struct LoadImpulseEmitterBox<P_: Parameters, LIT_: LoadImpulseType>: LoadImpulseEmitter {
+public struct AnyLoadImpulseEmitter<P_: Parameters, LIT_: LoadImpulseType>: LoadImpulseEmitter {
     public typealias P = P_
     public typealias LIT = LIT_
     

@@ -9,10 +9,10 @@ import Result
 public struct CachedDatasource<Value: Any, P: Parameters, LIT: LoadImpulseType, E: DatasourceError> {
     
     public typealias CachedStateConcrete = CachedState<Value, P, LIT, E>
-    public typealias DatasourceConcrete = DatasourceBox<Value, P, LIT, E>
-    public typealias LoadImpulseEmitterConcrete = LoadImpulseEmitterBox<P, LIT>
-    public typealias ResponseCombinerConcrete = ResponseCombinerBox<Value, P, LIT, E>
-    public typealias StatePersisterConcrete = StatePersisterBox<Value, P, LIT, E>
+    public typealias DatasourceConcrete = AnyDatasource<Value, P, LIT, E>
+    public typealias LoadImpulseEmitterConcrete = AnyLoadImpulseEmitter<P, LIT>
+    public typealias ResponseCombinerConcrete = AnyResponseCombiner<Value, P, LIT, E>
+    public typealias StatePersisterConcrete = AnyStatePersister<Value, P, LIT, E>
     
     private let loadImpulseEmitter: LoadImpulseEmitterConcrete
     
