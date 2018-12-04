@@ -8,7 +8,8 @@ public protocol StatePersister {
     typealias StateConcrete = State<Value, P, LIT, E>
     
     func persist(_ state: StateConcrete)
-    func load() -> StateConcrete?
+    func load(_ parameters: P) -> StateConcrete?
+    func purge()
 }
 
 public extension StatePersister {
@@ -25,19 +26,25 @@ public struct AnyStatePersister<Value_: Any, P_: Parameters, LIT_: LoadImpulseTy
     public typealias StateConcrete = State<Value, P, LIT, E>
     
     private let _persist: (StateConcrete) -> ()
-    private let _load: () -> StateConcrete?
+    private let _load: (P) -> StateConcrete?
+    private let _purge: () -> ()
     
     public init<SP: StatePersister>(_ persister: SP) where SP.Value == Value, SP.P == P, SP.LIT == LIT, SP.E == E {
         self._persist = persister.persist
         self._load = persister.load
+        self._purge = persister.purge
     }
     
     public func persist(_ state: StateConcrete) {
         _persist(state)
     }
     
-    public func load() -> StateConcrete? {
-        return _load()
+    public func load(_ parameters: P) -> StateConcrete? {
+        return _load(parameters)
+    }
+    
+    public func purge() {
+        _purge()
     }
 }
 

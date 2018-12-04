@@ -30,16 +30,25 @@ public struct CachePersister<T: Codable, P: Parameters & Codable, LIT: LoadImpul
         try? storage?.setObject(state, forKey: "latestValue")
     }
     
-    public func load() -> State<T, P, LIT, E>? {
+    public func load(_ parameters: P) -> State<T, P, LIT, E>? {
         guard let storage = self.storage else {
             return nil
         }
         
         do {
-            return try storage.object(forKey: "latestValue")
+            let state = try storage.object(forKey: "latestValue")
+            if (state.parameters?.isCacheCompatible(parameters) ?? false) {
+                return state
+            } else {
+                return nil
+            }
         } catch {
             return nil
         }
+    }
+    
+    public func purge() {
+        try? storage?.removeAll()
     }
     
 }

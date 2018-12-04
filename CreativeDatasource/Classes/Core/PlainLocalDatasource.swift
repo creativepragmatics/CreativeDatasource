@@ -21,9 +21,9 @@ public struct PlainCacheDatasource<Value_: Any, P_: Parameters, LIT_: LoadImpuls
     private static func asyncStateProducer(persister: StatePersisterConcrete, loadImpulseEmitter: LoadImpulseEmitterConcrete, cacheLoadError: E) -> SignalProducer<StateConcrete, NoError> {
         
         return loadImpulseEmitter.loadImpulses
-            .take(first: 1)
+            .skipRepeats()
             .flatMap(.latest) { loadImpulse -> SignalProducer<StateConcrete, NoError> in
-                guard let cached = persister.load() else {
+                guard let cached = persister.load(loadImpulse.parameters) else {
                     return SignalProducer(value: State.error(error: cacheLoadError, loadImpulse: loadImpulse))
                 }
                 
