@@ -13,7 +13,7 @@ public protocol Datasource {
     
     /// Must return `true` if the datasource sends a `state`
     /// immediately on subscription.
-    var sendsFirstStateSynchronously: Bool {get}
+    var loadsSynchronously: Bool {get}
 }
 
 public extension Datasource {
@@ -30,11 +30,11 @@ public struct AnyDatasource<Value_: Any, P_: Parameters, LIT_: LoadImpulseType, 
     public typealias StateConcrete = State<Value, P, LIT, E>
     
     public let state: SignalProducer<StateConcrete, NoError>
-    public let sendsFirstStateSynchronously: Bool
+    public let loadsSynchronously: Bool
     
     init<D: Datasource>(_ datasource: D) where D.Value == Value, D.P == P, D.LIT == LIT, D.E == E {
         self.state = datasource.state
-        self.sendsFirstStateSynchronously = datasource.sendsFirstStateSynchronously
+        self.loadsSynchronously = datasource.loadsSynchronously
     }
 }
 

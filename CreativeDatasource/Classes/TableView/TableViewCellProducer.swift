@@ -13,12 +13,15 @@ public enum DefaultTableViewCellProducer<Cell: ListItem>: TableViewCellProducer 
     // Cell class registration is performed automatically:
     case classAndIdentifier(class: UITableViewCell.Type, identifier: TableViewCellDequeueIdentifier, configure: (UITableViewCell, Cell) -> (), hashableTag: HashableTag)
     
+    case nibAndIdentifier(nib: UINib, identifier: TableViewCellDequeueIdentifier, configure: (UITableViewCell, Cell) -> (), hashableTag: HashableTag)
+    
     // No cell class registration is performed:
     case generator((Cell) -> UITableViewCell, hashableTag: HashableTag)
     
     var hashableTag: HashableTag {
         switch self {
         case let .classAndIdentifier(_, _, _, hashableTag): return hashableTag
+        case let .nibAndIdentifier(_, _, _, hashableTag): return hashableTag
         case let .generator(_, hashableTag): return hashableTag
         }
     }
@@ -27,6 +30,13 @@ public enum DefaultTableViewCellProducer<Cell: ListItem>: TableViewCellProducer 
         switch self {
         case let .classAndIdentifier(clazz, identifier, configure, _):
             containingView.register(clazz, forCellReuseIdentifier: identifier)
+            guard let tableViewCell = containingView.dequeueReusableCell(withIdentifier: identifier) as? UITableViewCell else {
+                return ProducedView()
+            }
+            configure(tableViewCell, item)
+            return tableViewCell
+        case let .nibAndIdentifier(nib, identifier, configure, _):
+            containingView.register(nib, forCellReuseIdentifier: identifier)
             guard let tableViewCell = containingView.dequeueReusableCell(withIdentifier: identifier) as? UITableViewCell else {
                 return ProducedView()
             }

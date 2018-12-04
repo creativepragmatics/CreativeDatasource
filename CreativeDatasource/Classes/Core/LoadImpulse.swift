@@ -6,7 +6,7 @@ public struct LoadImpulse<P: Parameters, LIT : LoadImpulseType>: Equatable {
     let loadImpulseType: LIT
     let skipIfResultAvailable: Bool
     
-    init(parameters: P, loadImpulseType: LIT, skipIfResultAvailable: Bool = false) {
+    public init(parameters: P, loadImpulseType: LIT, skipIfResultAvailable: Bool = false) {
         self.parameters = parameters
         self.loadImpulseType = loadImpulseType
         self.skipIfResultAvailable = skipIfResultAvailable

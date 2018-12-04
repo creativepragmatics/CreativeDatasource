@@ -12,7 +12,7 @@ public protocol StatePersister {
 }
 
 public extension StatePersister {
-    public var any: AnyStatePersister<Value, P, LIT, E> {
+    var any: AnyStatePersister<Value, P, LIT, E> {
         return AnyStatePersister(self)
     }
 }

@@ -12,53 +12,24 @@ public struct PlainCacheDatasource<Value_: Any, P_: Parameters, LIT_: LoadImpuls
     public typealias LoadImpulseEmitterConcrete = AnyLoadImpulseEmitter<P, LIT>
     
     public let state: SignalProducer<StateConcrete, NoError>
-    public var sendsFirstStateSynchronously: Bool {
-        switch loadingMode {
-        case .synchronously: return true
-        case .waitForLoadImpulse: return false
-        }
-    }
-    private let loadingMode: LoadingMode
+    public let loadsSynchronously = true
     
-    public init(persister: StatePersisterConcrete, loadImpulseEmitter: LoadImpulseEmitterConcrete, cacheLoadError: E, loadingMode: LoadingMode = .synchronously) {
-        self.loadingMode = loadingMode
-        switch loadingMode {
-        case .synchronously:
-            let initialState = persister.load() ?? StateConcrete.datasourceNotReady
-            self.state = SignalProducer(value: initialState)
-        case .waitForLoadImpulse:
-            self.state = PlainCacheDatasource.asyncStateProducer(persister: persister, loadImpulseEmitter: loadImpulseEmitter, cacheLoadError: cacheLoadError, loadingMode: loadingMode)
-        }
+    public init(persister: StatePersisterConcrete, loadImpulseEmitter: LoadImpulseEmitterConcrete, cacheLoadError: E) {
+        self.state = PlainCacheDatasource.asyncStateProducer(persister: persister, loadImpulseEmitter: loadImpulseEmitter, cacheLoadError: cacheLoadError)
     }
     
-    private static func asyncStateProducer(persister: StatePersisterConcrete, loadImpulseEmitter: LoadImpulseEmitterConcrete, cacheLoadError: E, loadingMode: LoadingMode) -> SignalProducer<StateConcrete, NoError> {
+    private static func asyncStateProducer(persister: StatePersisterConcrete, loadImpulseEmitter: LoadImpulseEmitterConcrete, cacheLoadError: E) -> SignalProducer<StateConcrete, NoError> {
         
-        let load = { (loadImpulse: LoadImpulse<P, LIT>?) -> SignalProducer<StateConcrete, NoError> in
-            if let cached = persister.load() {
+        return loadImpulseEmitter.loadImpulses
+            .take(first: 1)
+            .flatMap(.latest) { loadImpulse -> SignalProducer<StateConcrete, NoError> in
+                guard let cached = persister.load() else {
+                    return SignalProducer(value: State.error(error: cacheLoadError, loadImpulse: loadImpulse))
+                }
+                
                 return SignalProducer(value: cached)
-            } else if let loadImpulse = loadImpulse {
-                return SignalProducer(value: State.error(error: cacheLoadError, loadImpulse: loadImpulse))
-            } else {
-                return SignalProducer.empty
-            }
         }
         
-        switch loadingMode {
-        case .synchronously:
-            return load(nil)
-        case .waitForLoadImpulse:
-            return loadImpulseEmitter.loadImpulses
-                .take(first: 1)
-                .flatMap(.latest) { loadImpulse -> SignalProducer<StateConcrete, NoError> in
-                    return load(loadImpulse)
-            }
-        }
-        
-    }
-    
-    public enum LoadingMode {
-        case synchronously
-        case waitForLoadImpulse
     }
     
 }

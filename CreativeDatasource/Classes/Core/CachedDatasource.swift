@@ -24,7 +24,9 @@ public struct CachedDatasource<Value: Any, P: Parameters, LIT: LoadImpulseType, 
                 persister: StatePersisterConcrete? = nil,
                 responseCombiner: ResponseCombinerConcrete) {
         self.loadImpulseEmitter = loadImpulseEmitter
-        self.cachedState = Property<CachedState>(initial: .datasourceNotReady, then: CachedDatasource.cachedStatesProducer(loadImpulseEmitter: loadImpulseEmitter,cacheDatasource: cacheDatasource, primaryDatasource: primaryDatasource, persister: persister, responseCombiner: responseCombiner))
+        let cachedState = CachedDatasource.cachedStatesProducer(loadImpulseEmitter: loadImpulseEmitter,cacheDatasource: cacheDatasource, primaryDatasource: primaryDatasource, persister: persister, responseCombiner: responseCombiner)
+            .replayLazily(upTo: 1)
+        self.cachedState = Property<CachedStateConcrete>(initial: .datasourceNotReady, then: cachedState)
     }
     
     public func load(_ loadImpulse: LoadImpulse<P, LIT>) -> LoadingStarted {
@@ -59,8 +61,12 @@ public struct CachedDatasource<Value: Any, P: Parameters, LIT: LoadImpulseType, 
         let initialState = SignalProducer<CachedStateConcrete, NoError>(value: .datasourceNotReady)
         guard let datasource = datasource else { return initialState }
         
-        let cachedStates = datasource.state.map({ CachedState.with($0) })
-        return initialState.concat(cachedStates)
+        let states = datasource.state.map({ CachedState.with($0) })
+        if datasource.loadsSynchronously {
+            return states
+        } else {
+            return initialState.concat(states)
+        }
     }
     
     private static func cachedStatesProducer(loadImpulseEmitter: LoadImpulseEmitterConcrete,
@@ -72,8 +78,22 @@ public struct CachedDatasource<Value: Any, P: Parameters, LIT: LoadImpulseType, 
             
             let initialStateProducer = SignalProducer(value: CachedStateConcrete.datasourceNotReady)
             
-            let localState = datasourceState(cacheDatasource)
+            // Cached state. Sends intial state (.datasourceNotReady) if the cache datasource
+            // doesn't load synchronously.
+            let cachedState: SignalProducer<CachedStateConcrete, NoError> = {
+                let initialState = SignalProducer<CachedStateConcrete, NoError>(value: .datasourceNotReady)
+                guard let cacheDatasource = cacheDatasource else { return initialState }
+                
+                let states = cacheDatasource.state.map({ CachedState.with($0) })
+                if cacheDatasource.loadsSynchronously {
+                    return states
+                } else {
+                    return initialState.concat(states)
+                }
+            }()
             
+            // Primary state, combination of all responses ever sent, combined
+            // by the responseCombiner into a singular state.
             let primaryState: SignalProducer<CachedStateConcrete, NoError> = {
                 if let primaryDatasource = primaryDatasource {
                     let combinedPrimaryStates = responseCombiner.combinedState(datasource: primaryDatasource)
@@ -85,6 +105,8 @@ public struct CachedDatasource<Value: Any, P: Parameters, LIT: LoadImpulseType, 
                 }
             }()
             
+            // Last primary success state. Sends intial state (.datasourceNotReady)
+            // immediately on subscription.
             let primarySuccess = initialStateProducer
                 .concat(primaryState.filter({ primary in
                     if case .success = primary {
@@ -97,9 +119,10 @@ public struct CachedDatasource<Value: Any, P: Parameters, LIT: LoadImpulseType, 
             let loadImpulse = loadImpulseEmitter.loadImpulses.skipRepeats()
             
             return SignalProducer
-                .combineLatest(localState, primaryState, primarySuccess)
+                // All these signals will send .datasourceNotReady or a
+                // cached state immediately on subscription:
+                .combineLatest(cachedState, primaryState, primarySuccess)
                 .combineLatest(with: loadImpulse)
-                .observe(on: QueueScheduler())
                 .map({ arg -> CachedStateConcrete in
                     
                     let ((local, primary, primarySuccess), currentRefresh) = arg
@@ -146,7 +169,6 @@ public struct CachedDatasource<Value: Any, P: Parameters, LIT: LoadImpulseType, 
                         return fallbackCachedState(primary: primary)
                     }
                 })
-                .observe(on: QueueScheduler.main)
     }
     
     /// Persists the provided `CachedState` to disk.
@@ -192,7 +214,7 @@ public struct CachedDatasource<Value: Any, P: Parameters, LIT: LoadImpulseType, 
             let primarySuccessValue = primarySuccess.value(successRefresh.parameters)
             return CachedState.loading(cached: primarySuccessValue, loadImpulse: primaryRefresh)
         case let (_, .success(_, successRefresh)) where successRefresh.parameters.isCacheCompatible(currentParameters):
-            // primary is loading, but we can fall back to last LOCAL success
+            // primary is loading, but we can fall back to last CACHED success
             let localSuccessValue = local.value(successRefresh.parameters)
             return CachedState.loading(cached: localSuccessValue, loadImpulse: primaryRefresh)
         default:

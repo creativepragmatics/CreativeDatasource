@@ -151,7 +151,6 @@ public struct DefaultStateToSingleSectionListItemsTransformer<DatasourceValue_: 
                 if let loadingCellGenerator = loadingCellGenerator {
                     // Delay the loading cell by 0.1 seconds
                     return SignalProducer(value: SingleSectionListItems.readyToDisplay([loadingCellGenerator()]))
-                        .delay(0.1, on: QueueScheduler.main)
                 } else {
                     // No loadingCellGenerator set, return empty items
                     return SignalProducer(value: SingleSectionListItems.readyToDisplay([]))
