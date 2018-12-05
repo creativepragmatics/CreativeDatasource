@@ -29,6 +29,7 @@ public struct CachedDatasource<Value: Any, P: Parameters, LIT: LoadImpulseType, 
         self.cachedState = Property<CachedStateConcrete>(initial: .datasourceNotReady, then: cachedState)
     }
     
+    @discardableResult
     public func load(_ loadImpulse: LoadImpulse<P, LIT>) -> LoadingStarted {
         
         guard !shouldSkipLoad(for: loadImpulse) else {
@@ -39,6 +40,30 @@ public struct CachedDatasource<Value: Any, P: Parameters, LIT: LoadImpulseType, 
         return true
     }
     
+    /// Defers loading until returned SignalProducer is subscribed to.
+    /// Once loading is done, returned SignalProducer sends the new
+    /// state and completes.
+    public func loadDeferred(_ loadImpulse: LoadImpulse<P, LIT>) -> SignalProducer<CachedStateConcrete, NoError> {
+        return SignalProducer.init({ (observer, lifetime) in
+            self.cachedState.producer
+                .skip(first: 1) // skip first (= current) value
+                .filter({ fetchState -> Bool in // only allow end-states (error, success)
+                    switch fetchState {
+                    case .error, .success:
+                        return true
+                    case .datasourceNotReady, .loading:
+                        return false
+                    }
+                })
+                .startWithValues({ cachedState in
+                    observer.send(value: cachedState)
+                    observer.sendCompleted()
+                })
+            self.load(loadImpulse)
+        })
+    }
+    
+    /// Should be subscribed to BEFORE a load is performed.
     public var loadingEnded: SignalProducer<Void, NoError> {
         return cachedState.producer
             .skip(first: 1) // skip first (= current) value

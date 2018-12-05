@@ -23,7 +23,7 @@ public enum CachedState<Value: Any, P: Parameters, LIT: LoadImpulseType, E: Data
     }
     
     /// Unchecked access to value. Discouraged.
-    var valueUnchecked: Value? {
+    public var valueUnchecked: Value? {
         switch self {
         case .datasourceNotReady:
             return nil
@@ -36,7 +36,7 @@ public enum CachedState<Value: Any, P: Parameters, LIT: LoadImpulseType, E: Data
         }
     }
     
-    static func with(_ state: State<Value, P, LIT, E>) -> CachedState {
+    public static func with(_ state: State<Value, P, LIT, E>) -> CachedState {
         switch state {
         case .datasourceNotReady: return .datasourceNotReady
         case let .loading(loadImpulse): return .loading(cached: nil, loadImpulse: loadImpulse)
@@ -45,7 +45,7 @@ public enum CachedState<Value: Any, P: Parameters, LIT: LoadImpulseType, E: Data
         }
     }
     
-    var loadImpulse: LoadImpulse<P, LIT>? {
+    public var loadImpulse: LoadImpulse<P, LIT>? {
         switch self {
         case .datasourceNotReady:
             return nil
@@ -58,7 +58,7 @@ public enum CachedState<Value: Any, P: Parameters, LIT: LoadImpulseType, E: Data
         }
     }
     
-    var parameters: P? {
+    public var parameters: P? {
         return loadImpulse?.parameters
     }
     
