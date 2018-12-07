@@ -110,6 +110,7 @@ public struct CachedDatasource<SubDatasourceState: StateProtocol>: DatasourcePro
             
             SubDatasourceState.init(notReadyProvisioningState: .notReady)
             let primaryState: SignalProducer<SubDatasourceState, NoError> = synchronouslySentState(primaryDatasource)
+                .replayLazily(upTo: 1) // replay because primarySuccess also subscribes
             let cachedState: SignalProducer<SubDatasourceState, NoError> = synchronouslySentState(cacheDatasource)
             
             // Last primary success state. Sends intial state (.datasourceNotReady)
