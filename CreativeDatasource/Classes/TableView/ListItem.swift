@@ -3,15 +3,10 @@ import UIKit
 
 public protocol ListItem: Equatable {
     var isSelectable: Bool {get}
-}
-
-public struct AnyListItem : ListItem {
     
-    public let isSelectable: Bool
-    
-    public init<I: ListItem>(_ listItem: I) {
-        self.isSelectable = listItem.isSelectable
-    }
+    // Required to display configuration or system errors
+    // for easier debugging.
+    init(errorMessage: String)
 }
 
 public protocol ListItemViewProducer {
@@ -40,12 +35,6 @@ public struct AnyListItemViewProducer<Item_: ListItem, ProducedView_: UIView, Co
     
     public func view(containingView: ContainingView, item: Item) -> ProducedView {
         return _view(containingView, item)
-    }
-}
-
-public extension Sequence where Element: ListItem {
-    public var any: Array<AnyListItem> {
-        return self.map({ AnyListItem($0) })
     }
 }
 

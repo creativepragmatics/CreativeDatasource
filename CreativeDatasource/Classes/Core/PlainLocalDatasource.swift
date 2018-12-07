@@ -25,7 +25,6 @@ public struct PlainCacheDatasource<State_: StateProtocol> : DatasourceProtocol {
                 
                 return SignalProducer(value: cached)
         }
-        
     }
     
 }
