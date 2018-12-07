@@ -13,22 +13,23 @@ import Foundation
 ///
 /// Usage: Instantiate with the required parameters and add the `tableViewController`
 /// to the view hierarchy.
-open class LoadingAndErrorCapableTableViewControllerProvider<ResponseContainer: Equatable, Cell: LoadingAndErrorCapableCell, P: Parameters, E> where Cell.E == E {
-    public typealias CachedDatasourceConcrete = CachedDatasource<ResponseContainer, P, PullToRefreshLoadImpulseType, E>
-    public typealias TableViewController = SingleSectionTableViewController<ResponseContainer, Cell, P, E>
-    public typealias TableViewDatasource = SingleSectionTableViewDatasource<ResponseContainer, Cell, P, E>
-    public typealias ListItemsProvider = SingleSectionListItemsProvider<ResponseContainer, Cell, P, E>
-    public typealias StateToListItemsTransformer = DefaultStateToSingleSectionListItemsTransformer<ResponseContainer, Cell, P, E>
+open class LoadingAndErrorCapableTableViewControllerProvider<Datasource: DatasourceProtocol, Cell: LoadingAndErrorCapableCell> where Cell.E == Datasource.State.E {
+    public typealias State = Datasource.State
+    public typealias Value = State.Value
+    public typealias TableViewController = SingleSectionTableViewController<Datasource, Cell>
+    public typealias TableViewDatasource = SingleSectionTableViewDatasource<Datasource, Cell>
+    public typealias ListItemsProvider = SingleSectionListItemsProvider<Datasource, Cell>
+    public typealias StateToListItemsTransformer = DefaultStateToSingleSectionListItemsTransformer<Datasource.State, Cell>
     public typealias TableViewCellProducer = DefaultTableViewCellProducer<Cell>
     public typealias CellSelected = (Cell) -> ()
     public typealias OnPullToRefresh = () -> ()
-    public typealias ResponseContainerToCells = (ResponseContainer) -> [Cell]?
+    public typealias ValueToCells = (Value) -> [Cell]?
     public typealias GetTableViewCellProducer = (Cell) -> TableViewCellProducer
     
-    private let datasource: CachedDatasourceConcrete
+    private let datasource: Datasource
     private let cellSelected: CellSelected
     private let pullToRefresh: OnPullToRefresh
-    private let responseContainerToCells: ResponseContainerToCells
+    private let valueToCells: ValueToCells
     private let getTableViewCellProducer: GetTableViewCellProducer
     
     public lazy var tableViewController : TableViewController = {
@@ -40,9 +41,9 @@ open class LoadingAndErrorCapableTableViewControllerProvider<ResponseContainer: 
     private lazy var tableViewDatasource: TableViewDatasource = {
         let transformer = self.stateToListItemsTransformer
         
-        let cellsProvider = ListItemsProvider.init(cachedDatasource: self.datasource,
+        let cellsProvider = ListItemsProvider.init(datasource: self.datasource,
                                                    itemsTransformer: self.stateToListItemsTransformer.any,
-                                                   valueToItems: self.responseContainerToCells)
+                                                   valueToItems: self.valueToCells)
         return TableViewDatasource(cellsProvider: cellsProvider,
                                    cellViewProducer: self.getTableViewCellProducer,
                                    itemSelected: { [weak self] cell in
@@ -54,7 +55,7 @@ open class LoadingAndErrorCapableTableViewControllerProvider<ResponseContainer: 
         let noResultsCellGenerator: () -> (Cell) = {
             return Cell.noResultsCell
         }
-        let errorCellGenerator: (E) -> (Cell) = {
+        let errorCellGenerator: (State.E) -> (Cell) = {
             return Cell.errorCell($0)
         }
         let loadingCellGenerator: () -> (Cell) = {
@@ -65,11 +66,11 @@ open class LoadingAndErrorCapableTableViewControllerProvider<ResponseContainer: 
                                            loadingCellGenerator: loadingCellGenerator)
     }()
     
-    public init(datasource: CachedDatasourceConcrete, cellSelected: @escaping CellSelected, pullToRefresh: @escaping OnPullToRefresh, responseContainerToCells: @escaping ResponseContainerToCells, getTableViewCellProducer: @escaping GetTableViewCellProducer) {
+    public init(datasource: Datasource, cellSelected: @escaping CellSelected, pullToRefresh: @escaping OnPullToRefresh, valueToCells: @escaping ValueToCells, getTableViewCellProducer: @escaping GetTableViewCellProducer) {
         self.datasource = datasource
         self.cellSelected = cellSelected
         self.pullToRefresh = pullToRefresh
-        self.responseContainerToCells = responseContainerToCells
+        self.valueToCells = valueToCells
         self.getTableViewCellProducer = getTableViewCellProducer
     }
 }

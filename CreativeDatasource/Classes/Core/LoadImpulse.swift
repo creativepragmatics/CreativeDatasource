@@ -17,6 +17,11 @@ public struct LoadImpulse<P: Parameters, LIT : LoadImpulseType>: Equatable {
         modified.parameters = parameters
         return modified
     }
+    
+    /// Convenience shorthand
+    func isCacheCompatible(_ candidate: LoadImpulse<P, LIT>) -> Bool {
+        return parameters.isCacheCompatible(candidate.parameters)
+    }
 }
 
 extension LoadImpulse : Codable where P: Codable, LIT: Codable {}

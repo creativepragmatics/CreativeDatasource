@@ -3,10 +3,10 @@ import UIKit
 import ReactiveSwift
 import Result
 
-open class SingleSectionTableViewDatasource<DatasourceValue: Equatable, Cell: ListItem, P: Parameters, E: DatasourceError>: NSObject, UITableViewDelegate, UITableViewDataSource {
+open class SingleSectionTableViewDatasource<Datasource: DatasourceProtocol, Cell: ListItem>: NSObject, UITableViewDelegate, UITableViewDataSource {
     
     public typealias Cells = SingleSectionListItems<Cell>
-    public typealias CellsProvider = SingleSectionListItemsProvider<DatasourceValue, Cell, P, E>
+    public typealias CellsProvider = SingleSectionListItemsProvider<Datasource, Cell>
     public typealias CellViewProducer = (Cell) -> DefaultTableViewCellProducer<Cell>
     
     public var heightAtIndexPath: [IndexPath: CGFloat] = [:]

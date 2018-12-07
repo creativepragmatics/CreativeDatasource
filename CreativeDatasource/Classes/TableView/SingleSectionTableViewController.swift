@@ -2,10 +2,10 @@ import Foundation
 import ReactiveSwift
 import Dwifft
 
-open class SingleSectionTableViewController<DatasourceValue: Equatable, Cell: ListItem, P: Parameters, E: DatasourceError> : UIViewController {
+open class SingleSectionTableViewController<Datasource: DatasourceProtocol, Cell: ListItem> : UIViewController {
     
     public typealias Cells = SingleSectionListItems<Cell>
-    public typealias TableViewDatasource = SingleSectionTableViewDatasource<DatasourceValue, Cell, P, E>
+    public typealias TableViewDatasource = SingleSectionTableViewDatasource<Datasource, Cell>
     
     open var refreshControl: UIRefreshControl?
     

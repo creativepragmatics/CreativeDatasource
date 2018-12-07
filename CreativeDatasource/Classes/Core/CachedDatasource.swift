@@ -2,31 +2,35 @@ import Foundation
 import ReactiveSwift
 import Result
 
-/// Maintains state coming from multiple sources (primary and local).
+/// Maintains state coming from multiple sources (primary and cache).
 /// It is able to support pagination, live feeds, etc in the primary datasource (yet to be implemented).
 /// State coming from the primary datasource is treated as preferential over state from
-/// the local datasource. You can think of the local datasource as cache.
-public struct CachedDatasource<Value: Any, P: Parameters, LIT: LoadImpulseType, E: DatasourceError> {
+/// the cache datasource. You can think of the cache datasource as cache.
+public struct CachedDatasource<SubDatasourceState: StateProtocol>: DatasourceProtocol {
+    public typealias State = CachedState<SubDatasourceState.Value, P, LIT, E>
+    public typealias P = SubDatasourceState.P
+    public typealias LIT = SubDatasourceState.LIT
+    public typealias E = SubDatasourceState.E
     
-    public typealias CachedStateConcrete = CachedState<Value, P, LIT, E>
-    public typealias DatasourceConcrete = AnyDatasource<Value, P, LIT, E>
+    public typealias SubDatasource = AnyDatasource<SubDatasourceState>
     public typealias LoadImpulseEmitterConcrete = AnyLoadImpulseEmitter<P, LIT>
-    public typealias ResponseCombinerConcrete = AnyResponseCombiner<Value, P, LIT, E>
-    public typealias StatePersisterConcrete = AnyStatePersister<Value, P, LIT, E>
+    public typealias StatePersisterConcrete = AnyStatePersister<SubDatasourceState>
     
     private let loadImpulseEmitter: LoadImpulseEmitterConcrete
+    public let loadsSynchronously = true
     
-    public let cachedState: Property<CachedStateConcrete>
+    private let stateProperty: Property<State>
+    public var state: SignalProducer<State, NoError> {
+        return stateProperty.producer
+    }
     
     public init(loadImpulseEmitter: LoadImpulseEmitterConcrete,
-                cacheDatasource: DatasourceConcrete? = nil,
-                primaryDatasource: DatasourceConcrete? = nil,
-                persister: StatePersisterConcrete? = nil,
-                responseCombiner: ResponseCombinerConcrete) {
+                primaryDatasource: SubDatasource? = nil,
+                cacheDatasource: SubDatasource? = nil,
+                persister: StatePersisterConcrete? = nil) {
         self.loadImpulseEmitter = loadImpulseEmitter
-        let cachedState = CachedDatasource.cachedStatesProducer(loadImpulseEmitter: loadImpulseEmitter,cacheDatasource: cacheDatasource, primaryDatasource: primaryDatasource, persister: persister, responseCombiner: responseCombiner)
-            .replayLazily(upTo: 1)
-        self.cachedState = Property<CachedStateConcrete>(initial: .datasourceNotReady, then: cachedState)
+        let stateProducer = CachedDatasource.cachedStatesProducer(loadImpulseEmitter: loadImpulseEmitter, primaryDatasource: primaryDatasource, cacheDatasource: cacheDatasource, persister: persister)
+        self.stateProperty = Property(initial: State.datasourceNotReady, then: stateProducer)
     }
     
     @discardableResult
@@ -43,9 +47,9 @@ public struct CachedDatasource<Value: Any, P: Parameters, LIT: LoadImpulseType, 
     /// Defers loading until returned SignalProducer is subscribed to.
     /// Once loading is done, returned SignalProducer sends the new
     /// state and completes.
-    public func loadDeferred(_ loadImpulse: LoadImpulse<P, LIT>) -> SignalProducer<CachedStateConcrete, NoError> {
+    public func loadDeferred(_ loadImpulse: LoadImpulse<P, LIT>) -> SignalProducer<State, NoError> {
         return SignalProducer.init({ (observer, lifetime) in
-            self.cachedState.producer
+            self.stateProperty.producer
                 .skip(first: 1) // skip first (= current) value
                 .filter({ fetchState -> Bool in // only allow end-states (error, success)
                     switch fetchState {
@@ -65,7 +69,7 @@ public struct CachedDatasource<Value: Any, P: Parameters, LIT: LoadImpulseType, 
     
     /// Should be subscribed to BEFORE a load is performed.
     public var loadingEnded: SignalProducer<Void, NoError> {
-        return cachedState.producer
+        return stateProperty.producer
             .skip(first: 1) // skip first (= current) value
             .filter({ fetchState -> Bool in // only allow end-states (error, success)
                 switch fetchState {
@@ -79,67 +83,39 @@ public struct CachedDatasource<Value: Any, P: Parameters, LIT: LoadImpulseType, 
     }
     
     private func shouldSkipLoad(for loadImpulse: LoadImpulse<P, LIT>) -> Bool {
-        return loadImpulse.skipIfResultAvailable && cachedState.value.value(loadImpulse.parameters) != nil
-    }
-    
-    private static func datasourceState(_ datasource: DatasourceConcrete?) -> SignalProducer<CachedStateConcrete, NoError> {
-        let initialState = SignalProducer<CachedStateConcrete, NoError>(value: .datasourceNotReady)
-        guard let datasource = datasource else { return initialState }
-        
-        let states = datasource.state.map({ CachedState.with($0) })
-        if datasource.loadsSynchronously {
-            return states
-        } else {
-            return initialState.concat(states)
-        }
+        return loadImpulse.skipIfResultAvailable && stateProperty.value.hasLoadedSuccessfully != nil
     }
     
     private static func cachedStatesProducer(loadImpulseEmitter: LoadImpulseEmitterConcrete,
-                                                cacheDatasource: DatasourceConcrete? = nil,
-                                                primaryDatasource: DatasourceConcrete? = nil,
-                                                persister: StatePersisterConcrete? = nil,
-                                                responseCombiner: ResponseCombinerConcrete)
-        -> SignalProducer<CachedStateConcrete, NoError> {
+                                             primaryDatasource: SubDatasource? = nil,
+                                             cacheDatasource: SubDatasource? = nil,
+                                             persister: StatePersisterConcrete? = nil)
+        -> SignalProducer<State, NoError> {
             
-            let initialStateProducer = SignalProducer(value: CachedStateConcrete.datasourceNotReady)
+            let initialStateProducer = SignalProducer(value: SubDatasourceState(notReadyProvisioningState: .notReady))
             
-            // Cached state. Sends intial state (.datasourceNotReady) if the cache datasource
-            // doesn't load synchronously.
-            let cachedState: SignalProducer<CachedStateConcrete, NoError> = {
-                let initialState = SignalProducer<CachedStateConcrete, NoError>(value: .datasourceNotReady)
-                guard let cacheDatasource = cacheDatasource else { return initialState }
+            // In order to start sending states immediately, .combineLatest requires all
+            // datasources to send values synchronously on subscription.
+            func synchronouslySentState(_ subDatasource: SubDatasource?) -> SignalProducer<SubDatasourceState, NoError> {
+                let initialState = SubDatasourceState.init(notReadyProvisioningState: .notReady)
+                let initialStateProducer = SignalProducer<SubDatasourceState, NoError>(value: initialState)
+                guard let subDatasource = subDatasource else { return initialStateProducer }
                 
-                let states = cacheDatasource.state.map({ CachedState.with($0) })
-                if cacheDatasource.loadsSynchronously {
-                    return states
+                if subDatasource.loadsSynchronously {
+                    return subDatasource.state
                 } else {
-                    return initialState.concat(states)
+                    return initialStateProducer.concat(subDatasource.state)
                 }
-            }()
+            }
             
-            // Primary state, combination of all responses ever sent, combined
-            // by the responseCombiner into a singular state.
-            let primaryState: SignalProducer<CachedStateConcrete, NoError> = {
-                if let primaryDatasource = primaryDatasource {
-                    let combinedPrimaryStates = responseCombiner.combinedState(datasource: primaryDatasource)
-                        .replayLazily(upTo: 1)
-                    return initialStateProducer
-                        .concat(combinedPrimaryStates)
-                } else {
-                    return initialStateProducer
-                }
-            }()
+            SubDatasourceState.init(notReadyProvisioningState: .notReady)
+            let primaryState: SignalProducer<SubDatasourceState, NoError> = synchronouslySentState(primaryDatasource)
+            let cachedState: SignalProducer<SubDatasourceState, NoError> = synchronouslySentState(cacheDatasource)
             
             // Last primary success state. Sends intial state (.datasourceNotReady)
             // immediately on subscription.
             let primarySuccess = initialStateProducer
-                .concat(primaryState.filter({ primary in
-                    if case .success = primary {
-                        return true
-                    } else {
-                        return false
-                    }
-                }))
+                .concat(primaryState.filter({ $0.hasLoadedSuccessfully }))
             
             let loadImpulse = loadImpulseEmitter.loadImpulses.skipRepeats()
             
@@ -148,143 +124,99 @@ public struct CachedDatasource<Value: Any, P: Parameters, LIT: LoadImpulseType, 
                 // cached state immediately on subscription:
                 .combineLatest(cachedState, primaryState, primarySuccess)
                 .combineLatest(with: loadImpulse)
-                .map({ arg -> CachedStateConcrete in
+                .map({ arg -> State in
                     
-                    let ((local, primary, primarySuccess), currentRefresh) = arg
-                    let currentParameters = currentRefresh.parameters
+                    let ((cache, primary, primarySuccess), loadImpulse) = arg
+                    let currentParameters = loadImpulse.parameters
                     
-                    // If fetchPrimary == nil, use local as main datasource and return immediately:
+                    // If fetchPrimary == nil, use cache as main datasource and return immediately:
                     guard let _ = primaryDatasource else {
-                        switch local {
-                        case .datasourceNotReady:
-                            return .datasourceNotReady
-                        case let .loading(_, loadImpulse):
-                            return CachedState.loading(cached: nil, loadImpulse: loadImpulse)
-                        case let .success(valueBox, loadImpulse):
-                            return CachedState.success(valueBox: valueBox, loadImpulse: loadImpulse)
-                        case let .error(error, _, loadImpulse):
-                            return CachedState.error(error: error, cached: nil, loadImpulse: loadImpulse)
-                        }
+                        return stateForCacheSubDatasourceStateOnly(cache: cache)
                     }
                     
-                    switch primary {
-                    case let .success(_, loadImpulse) where loadImpulse.parameters.isCacheCompatible(currentParameters):
-                        // Primary is success > save to local storage
-                        if let persister = persister {
-                            persist(primaryState: primary, statePersister: persister)
+                    switch primary.provisioningState {
+                    case .notReady, .loading:
+                        if let lastPrimarySuccessResult = cacheCompatibleResult(state: primarySuccess, loadImpulse: loadImpulse) {
+                            switch lastPrimarySuccessResult {
+                            case let .success(valueBox):
+                                return State.loading(cached: valueBox, loadImpulse: loadImpulse)
+                            case .failure:
+                                break
+                            }
                         }
-                        return primary
-                    case let .loading(primaryCached, primaryRefresh):
-                        if let _ = primaryCached {
-                            return primary
-                        } else {
-                            // Primary is loading and has no cache, but we might fall back to last primary success
-                            return unifiedStateForPrimaryLoading(primaryRefresh: primaryRefresh, primarySuccess: primarySuccess, local: local, currentParameters: currentParameters)
-                                ?? fallbackCachedState(primary: primary)
+                        
+                        if let cacheResult = cacheCompatibleResult(state: cache, loadImpulse: loadImpulse) {
+                            switch cacheResult {
+                            case let .success(valueBox):
+                                return State.loading(cached: valueBox, loadImpulse: loadImpulse)
+                            case let .failure(error):
+                                switch primary.provisioningState {
+                                case .notReady: return State.datasourceNotReady
+                                case .loading: return State.loading(cached: nil, loadImpulse: loadImpulse)
+                                case .result: return State.datasourceNotReady // cannot happen because not in parent case
+                                }
+                            }
                         }
-                    case let .error(error, primaryCached, primaryRefresh):
-                        if let _ = primaryCached {
-                            return primary
-                        } else {
-                            // Primary is error, but we might fall back to last primary success
-                            return unifiedStateForPrimaryError(error: error, primaryRefresh: primaryRefresh, primarySuccess: primarySuccess, local: local, currentParameters: currentParameters)
-                                ?? fallbackCachedState(primary: primary)
+                        
+                        // Neither remote success nor cachely cached value
+                        switch primary.provisioningState {
+                        case .notReady, .result: return State.datasourceNotReady
+                        case .loading: return State.loading(cached: nil, loadImpulse: loadImpulse)
                         }
-                    case .datasourceNotReady, .success:
-                        return fallbackCachedState(primary: primary)
+                    case .result:
+                        guard let primaryResult = cacheCompatibleResult(state: primary, loadImpulse: loadImpulse) else {
+                            return State.datasourceNotReady
+                        }
+                        
+                        persister?.persist(primary)
+                        
+                        switch primaryResult {
+                        case let .success(valueBox):
+                            return State.success(valueBox: valueBox, loadImpulse: loadImpulse)
+                        case let .failure(error):
+                            guard let cacheResult = cacheCompatibleResult(state: cache, loadImpulse: loadImpulse) else {
+                                    return State.error(error: error, cached: nil, loadImpulse: loadImpulse)
+                            }
+                            
+                            switch cacheResult {
+                            case let .success(valueBox): return State.error(error: error, cached: valueBox, loadImpulse: loadImpulse)
+                            case .failure: return State.error(error: error, cached: nil, loadImpulse: loadImpulse)
+                            }
+                        }
                     }
                 })
     }
     
-    /// Persists the provided `CachedState` to disk.
-    private static func persist(primaryState: CachedStateConcrete, statePersister: StatePersisterConcrete) {
-        let stateToPersist: State<Value, P, LIT, E> = {
-            switch primaryState {
-            case .datasourceNotReady:
-                return .datasourceNotReady
-            case let .loading(cached, loadImpulse):
-                // Cached is used by "primary" for previously (successfully) loaded pages!
-                if let cached = cached {
-                    return .success(valueBox: cached, loadImpulse: loadImpulse)
-                } else {
-                    return .loading(loadImpulse: loadImpulse)
-                }
-            case let .success(value, loadImpulse):
-                return .success(valueBox: value, loadImpulse: loadImpulse)
-            case let .error(error, cached, loadImpulse):
-                // Cached is used by "primary" for previously (successfully) loaded pages!
-                if let cached = cached {
-                    return .success(valueBox: cached, loadImpulse: loadImpulse)
-                } else {
-                    return .error(error: error, loadImpulse: loadImpulse)
-                }
+    private static func cacheCompatibleResult(state: SubDatasourceState, loadImpulse: LoadImpulse<P, LIT>) -> Result<StrongEqualityValueBox<SubDatasourceState.Value>, E>? {
+        guard let result = state.result,
+            let stateLoadImpulse = state.loadImpulse,
+            stateLoadImpulse.isCacheCompatible(loadImpulse) else {
+                return nil
+        }
+        return result
+    }
+    
+    private static func stateForCacheSubDatasourceStateOnly(cache: SubDatasourceState) -> State {
+        switch cache.provisioningState {
+        case .notReady:
+            return State.datasourceNotReady
+        case .loading:
+            if let loadImpulse = cache.loadImpulse {
+                return State.loading(cached: nil, loadImpulse: loadImpulse)
+            } else {
+                return State.datasourceNotReady
             }
-        }()
-        
-        statePersister.persist(stateToPersist)
-    }
-    
-    /// Only use to get state if primary datasource has state `.loading`.
-    /// Returns either the last primary success state, or last local success state,
-    /// or nil if none of these are available/admissible.
-    private static func unifiedStateForPrimaryLoading(primaryRefresh: LoadImpulse<P, LIT>, primarySuccess: CachedStateConcrete, local: CachedStateConcrete, currentParameters: P) -> CachedStateConcrete? {
-        
-        guard primaryRefresh.parameters.isCacheCompatible(currentParameters) else {
-            return nil
-        }
-        
-        switch (primarySuccess, local) {
-        case let (.success(_, successRefresh), _) where successRefresh.parameters.isCacheCompatible(currentParameters):
-            // primary is loading, but we can fall back to last REMOTE success
-            let primarySuccessValue = primarySuccess.value(successRefresh.parameters)
-            return CachedState.loading(cached: primarySuccessValue, loadImpulse: primaryRefresh)
-        case let (_, .success(_, successRefresh)) where successRefresh.parameters.isCacheCompatible(currentParameters):
-            // primary is loading, but we can fall back to last CACHED success
-            let localSuccessValue = local.value(successRefresh.parameters)
-            return CachedState.loading(cached: localSuccessValue, loadImpulse: primaryRefresh)
-        default:
-            return nil
-        }
-    }
-    
-    /// Only use to get state if primary datasource has state `.error`.
-    /// Returns either the last primary success state, or last local success state,
-    /// or nil if none of these are available/admissible.
-    private static func unifiedStateForPrimaryError(error: E, primaryRefresh: LoadImpulse<P, LIT>, primarySuccess: CachedStateConcrete, local: CachedStateConcrete, currentParameters: P) -> CachedStateConcrete? {
-        
-        guard primaryRefresh.parameters.isCacheCompatible(currentParameters) else {
-            return nil
-        }
-        
-        switch (primarySuccess, local) {
-        case let (.success(_, successRefresh), _) where successRefresh.parameters.isCacheCompatible(currentParameters):
-            // primary is error, but we can fall back to last primary success
-            let primarySuccessValue = primarySuccess.value(successRefresh.parameters)
-            return CachedState.error(error: error, cached: primarySuccessValue, loadImpulse: primaryRefresh)
-        case let (_, .success(_, successRefresh)) where successRefresh.parameters.isCacheCompatible(currentParameters):
-            // primary is error, but we can fall back to last local success
-            let localSuccessValue = local.value(successRefresh.parameters)
-            return CachedState.error(error: error, cached: localSuccessValue, loadImpulse: primaryRefresh)
-        default:
-            return nil
-        }
-    }
-    
-    /// Returns a fallback state for when the primary-success and local
-    /// datasources have failed to provide a cached state.
-    private static func fallbackCachedState(primary: CachedStateConcrete) -> CachedStateConcrete {
-        switch primary {
-        case .datasourceNotReady:
-            return .datasourceNotReady
-        case let .loading(_, loadImpulse):
-            return .loading(cached: nil, loadImpulse: loadImpulse)
-        case .success:
-            // This happens when the current success state's tag doesn't match the
-            // current tag. Return .initial to force views into a blank state, wiping
-            // previously displayed items.
-            return .datasourceNotReady
-        case let .error(error, _, loadImpulse):
-            return CachedState.error(error: error, cached: nil, loadImpulse: loadImpulse)
+        case .result:
+            if let result = cache.result, let loadImpulse = cache.loadImpulse {
+                switch result {
+                case let .success(valueBox):
+                    return State.success(valueBox: valueBox, loadImpulse: loadImpulse)
+                case let .failure(error):
+                    return State.error(error: error, cached: nil, loadImpulse: loadImpulse)
+                }
+            } else {
+                return State.datasourceNotReady
+            }
         }
     }
     

@@ -10,7 +10,7 @@ import Foundation
 /// disk cache. After that, the box is just passed around (and equated a lot)
 /// until the value is finally used.
 public struct StrongEqualityValueBox<Value: Any>: Equatable {
-    let value: Value
+    public let value: Value
     let equalityId: String
     
     public init(_ value: Value) {

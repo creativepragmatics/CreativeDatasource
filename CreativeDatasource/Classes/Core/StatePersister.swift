@@ -1,45 +1,37 @@
 import Foundation
 
 public protocol StatePersister {
-    associatedtype Value: Any
-    associatedtype P: Parameters
-    associatedtype LIT: LoadImpulseType
-    associatedtype E: DatasourceError
-    typealias StateConcrete = State<Value, P, LIT, E>
+    associatedtype State: StateProtocol
     
-    func persist(_ state: StateConcrete)
-    func load(_ parameters: P) -> StateConcrete?
+    func persist(_ state: State)
+    func load(_ parameters: State.P) -> State?
     func purge()
 }
 
 public extension StatePersister {
-    var any: AnyStatePersister<Value, P, LIT, E> {
+    var any: AnyStatePersister<State> {
         return AnyStatePersister(self)
     }
 }
 
-public struct AnyStatePersister<Value_: Any, P_: Parameters, LIT_: LoadImpulseType, E_: DatasourceError> : StatePersister {
-    public typealias Value = Value_
-    public typealias P = P_
-    public typealias LIT = LIT_
-    public typealias E = E_
-    public typealias StateConcrete = State<Value, P, LIT, E>
+public struct AnyStatePersister<State_: StateProtocol> : StatePersister {
+    public typealias State = State_
     
-    private let _persist: (StateConcrete) -> ()
-    private let _load: (P) -> StateConcrete?
+    private let _persist: (State) -> ()
+    private let _load: (State.P) -> State?
     private let _purge: () -> ()
     
-    public init<SP: StatePersister>(_ persister: SP) where SP.Value == Value, SP.P == P, SP.LIT == LIT, SP.E == E {
+    public init<SP: StatePersister>(_ persister: SP) where SP.State == State {
         self._persist = persister.persist
         self._load = persister.load
         self._purge = persister.purge
     }
     
-    public func persist(_ state: StateConcrete) {
+    public func persist(_ state: State) {
         _persist(state)
     }
     
-    public func load(_ parameters: P) -> StateConcrete? {
+    public func load(_ parameters: State.P) -> State? {
         return _load(parameters)
     }
     

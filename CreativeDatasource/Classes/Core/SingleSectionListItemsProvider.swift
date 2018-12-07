@@ -2,35 +2,35 @@ import Foundation
 import ReactiveSwift
 import Result
 
-public struct SingleSectionListItemsProvider<DatasourceValue: Equatable, Item: ListItem, P: Parameters, E: DatasourceError> {
+public struct SingleSectionListItemsProvider<Datasource: DatasourceProtocol, Item: ListItem> {
     public typealias Items = SingleSectionListItems<Item>
-    public typealias ValueToItems = (DatasourceValue) -> [Item]?
-    public typealias CachedDatasourceConcrete = CachedDatasource<DatasourceValue, P, PullToRefreshLoadImpulseType, E>
-    public typealias ItemsTransformer = AnyStateToSingleSectionListItemsTransformer<DatasourceValue, Item, P, E>
-    private typealias CachedStateConcrete = CachedState<DatasourceValue, P, PullToRefreshLoadImpulseType, E>
+    public typealias State = Datasource.State
+    public typealias Value = Datasource.State.Value
+    public typealias ValueToItems = (Value) -> [Item]?
+    public typealias ItemsTransformer = AnyStateToSingleSectionListItemsTransformer<State, Item>
     
     public let cells: Property<Items>
     
-    public init(cachedDatasource: CachedDatasourceConcrete,
+    public init(datasource: Datasource,
                 itemsTransformer: ItemsTransformer,
                 valueToItems: @escaping ValueToItems) {
-        self.cells = Property(initial: .datasourceNotReady, then: SingleSectionListItemsProvider.cellsFromStateProducer(cachedDatasource: cachedDatasource, itemsTransformer: itemsTransformer, valueToItems: valueToItems))
+        self.cells = Property(initial: .datasourceNotReady, then: SingleSectionListItemsProvider.cellsFromStateProducer(datasource: datasource, itemsTransformer: itemsTransformer, valueToItems: valueToItems))
     }
     
-    private static func cellsFromStateProducer(cachedDatasource: CachedDatasourceConcrete, itemsTransformer: ItemsTransformer, valueToItems: @escaping ValueToItems)
+    private static func cellsFromStateProducer(datasource: Datasource, itemsTransformer: ItemsTransformer, valueToItems: @escaping ValueToItems)
         -> SignalProducer<Items, NoError> {
             
-            return cachedDatasource.cachedState.producer
+            return datasource.state
                 .flatMap(.latest, { state -> SignalProducer<Items, NoError> in
                     
                     // We do the state-to-cells conversion on a background thread if feasible
                     // because we want the app to be as smooth as possible. For the initial states,
                     // which are most likely used when a view is first shown, we stay synchronous
                     // because we don't want a white screen when cached data is available.
-                    switch state {
-                    case .loading, .datasourceNotReady:
+                    switch state.provisioningState {
+                    case .loading, .notReady:
                         return itemsTransformer.cells(state: state, valueToItems: valueToItems)
-                    case .success, .error:
+                    case .result:
                         // Start in background and return on main thread
                         return itemsTransformer.cells(state: state, valueToItems: valueToItems)
                             .start(on: QueueScheduler())
@@ -41,71 +41,62 @@ public struct SingleSectionListItemsProvider<DatasourceValue: Equatable, Item: L
 }
 
 extension SingleSectionListItemsProvider {
-    public typealias ErrorItemGenerator = (E) -> Item
+    public typealias ErrorItemGenerator = (State.E) -> Item
     public typealias ArbitraryItemGenerator = () -> Item
     
-    static func withDefaultItemsTransformer(cachedDatasource: CachedDatasourceConcrete,
+    static func withDefaultItemsTransformer(datasource: Datasource,
                                             valueToItems: @escaping ValueToItems,
                                             noResultsItemGenerator: ArbitraryItemGenerator? = nil,
                                             errorItemGenerator: ErrorItemGenerator? = nil,
                                             loadingCellGenerator: ArbitraryItemGenerator? = nil) -> SingleSectionListItemsProvider {
-        typealias ItemsTransformer = DefaultStateToSingleSectionListItemsTransformer<DatasourceValue, Item, P, E>
+        typealias ItemsTransformer = DefaultStateToSingleSectionListItemsTransformer<State, Item>
         let defaultItemsTransformer = ItemsTransformer.init(noResultsItemGenerator: noResultsItemGenerator, errorItemGenerator: errorItemGenerator, loadingCellGenerator: loadingCellGenerator).any
-        return SingleSectionListItemsProvider.init(cachedDatasource: cachedDatasource, itemsTransformer: defaultItemsTransformer, valueToItems: valueToItems)
+        return SingleSectionListItemsProvider.init(datasource: datasource, itemsTransformer: defaultItemsTransformer, valueToItems: valueToItems)
     }
 }
 
 /// Transforms the given state to list items for use in a single section
 /// list.
 public protocol StateToSingleSectionListItemsTransformer {
-    associatedtype DatasourceValue: Equatable
+    associatedtype State: StateProtocol
     associatedtype Item: ListItem
-    associatedtype P: Parameters
-    associatedtype E: DatasourceError
-    typealias CachedStateConcrete = CachedState<DatasourceValue, P, PullToRefreshLoadImpulseType, E>
-    typealias ValueToItems = (DatasourceValue) -> [Item]?
+    typealias ValueToItems = (State.Value) -> [Item]?
     typealias ArbitraryItemGenerator = () -> Item
     
-    func cells(state: CachedStateConcrete,
+    func cells(state: State,
                valueToItems: @escaping ValueToItems) -> SignalProducer<SingleSectionListItems<Item>, NoError>
 }
 
 public extension StateToSingleSectionListItemsTransformer {
-    public var any: AnyStateToSingleSectionListItemsTransformer<DatasourceValue, Item, P, E> {
+    public var any: AnyStateToSingleSectionListItemsTransformer<State, Item> {
         return AnyStateToSingleSectionListItemsTransformer(self)
     }
 }
 
-public struct AnyStateToSingleSectionListItemsTransformer<DatasourceValue_: Equatable, Item_: ListItem, P_: Parameters, E_: DatasourceError>: StateToSingleSectionListItemsTransformer {
-    public typealias DatasourceValue = DatasourceValue_
+public struct AnyStateToSingleSectionListItemsTransformer<State_: StateProtocol, Item_: ListItem>: StateToSingleSectionListItemsTransformer {
+    public typealias State = State_
     public typealias Item = Item_
-    public typealias P = P_
-    public typealias E = E_
-    public typealias CachedStateConcrete = CachedState<DatasourceValue, P, PullToRefreshLoadImpulseType, E>
-    public typealias ValueToItems = (DatasourceValue) -> [Item]?
+    public typealias ValueToItems = (State.Value) -> [Item]?
     
-    private let _cells: (CachedStateConcrete, @escaping ValueToItems) -> SignalProducer<SingleSectionListItems<Item>, NoError>
+    private let _cells: (State, @escaping ValueToItems) -> SignalProducer<SingleSectionListItems<Item>, NoError>
     
-    init<T: StateToSingleSectionListItemsTransformer>(_ transformer: T) where T.DatasourceValue == DatasourceValue, T.P == P, T.Item == Item, T.E == E {
+    init<T: StateToSingleSectionListItemsTransformer>(_ transformer: T) where T.State == State, T.Item == Item {
         self._cells = transformer.cells
     }
     
-    public func cells(state: CachedStateConcrete, valueToItems: @escaping ValueToItems) -> SignalProducer<SingleSectionListItems<Item>, NoError> {
+    public func cells(state: State, valueToItems: @escaping ValueToItems) -> SignalProducer<SingleSectionListItems<Item>, NoError> {
         return _cells(state, valueToItems)
     }
 }
 
 
 /// Default implementation for `StateToSingleSectionListItemsTransformer`.
-public struct DefaultStateToSingleSectionListItemsTransformer<DatasourceValue_: Equatable, Item_: ListItem, P_: Parameters, E_: DatasourceError>: StateToSingleSectionListItemsTransformer {
-    public typealias DatasourceValue = DatasourceValue_
+public struct DefaultStateToSingleSectionListItemsTransformer<State_: StateProtocol, Item_: ListItem>: StateToSingleSectionListItemsTransformer {
+    public typealias State = State_
     public typealias Item = Item_
-    public typealias P = P_
-    public typealias E = E_
-    public typealias CachedStateConcrete = CachedState<DatasourceValue, P, PullToRefreshLoadImpulseType, E>
-    public typealias ValueToItems = (DatasourceValue) -> [Item]?
+    public typealias ValueToItems = (State.Value) -> [Item]?
     public typealias Items = SingleSectionListItems<Item>
-    public typealias ErrorItemGenerator = (E) -> Item
+    public typealias ErrorItemGenerator = (State.E) -> Item
     public typealias ArbitraryItemGenerator = () -> Item
     
     private let noResultsItemGenerator: ArbitraryItemGenerator?
@@ -125,20 +116,21 @@ public struct DefaultStateToSingleSectionListItemsTransformer<DatasourceValue_: 
     /// If no values are currently available, return nil in valueToItems to
     /// show an item generated by `noResultsItemGenerator`/`errorItemGenerator`/`loadingCellGenerator`
     /// instead.
-    public func cells(state: CachedStateConcrete, valueToItems: @escaping ValueToItems) -> SignalProducer<Items, NoError> {
+    public func cells(state: State, valueToItems: @escaping ValueToItems) -> SignalProducer<Items, NoError> {
         
-        func boxedValueToItems(_ box: StrongEqualityValueBox<DatasourceValue>?) -> [Item]? {
+        func boxedValueToItems(_ box: StrongEqualityValueBox<State.Value>?) -> [Item]? {
             return (box?.value).flatMap({ valueToItems($0) })
         }
         
-        switch state {
-        case .datasourceNotReady:
+        switch state.provisioningState {
+        case .notReady:
             return SignalProducer(value: Items.datasourceNotReady)
-        case let .loading(cached, _):
-            if let items = boxedValueToItems(cached), items.count > 0 {
+        case let .loading:
+            let cachedValueBox = state.result?.value
+            if let items = boxedValueToItems(cachedValueBox), items.count > 0 {
                 // Loading and there are cached items, return them
                 return SignalProducer(value: Items.readyToDisplay(items))
-            } else if let _ = cached?.value {
+            } else if let _ = cachedValueBox {
                 // Loading and there are empty cached items, return noResults item
                 if let noResultsItemGenerator = noResultsItemGenerator {
                     return SignalProducer(value: SingleSectionListItems.readyToDisplay([noResultsItemGenerator()]))
@@ -156,28 +148,33 @@ public struct DefaultStateToSingleSectionListItemsTransformer<DatasourceValue_: 
                     return SignalProducer(value: SingleSectionListItems.readyToDisplay([]))
                 }
             }
-        case let .success(value, _):
-            if let cells = boxedValueToItems(value), cells.count > 0 {
-                // Success, return items
-                return SignalProducer(value: SingleSectionListItems.readyToDisplay(cells))
-            } else if let noResultsItemGenerator = noResultsItemGenerator {
-                // Success without items, return noResult item
-                return SignalProducer(value: SingleSectionListItems.readyToDisplay([noResultsItemGenerator()]))
-            } else {
-                // Success without items and no noResultsItemGenerator set, return empty items
-                return SignalProducer(value: SingleSectionListItems.readyToDisplay([]))
-            }
-        case let .error(error, cached, _):
-            if let cells = boxedValueToItems(cached), cells.count > 0 {
-                // Error and there are cached items, return them
-                return SignalProducer(value: SingleSectionListItems.readyToDisplay(cells))
-            } else {
-                // Error and no cached items, return error item
-                if let errorItemGenerator = errorItemGenerator {
-                    return SignalProducer(value: SingleSectionListItems.readyToDisplay([errorItemGenerator(error)]))
+        case let .result:
+            guard let result = state.result else { return SignalProducer(value: SingleSectionListItems.readyToDisplay([])) }
+            
+            switch result {
+            case let .success(valueBox):
+                if let cells = boxedValueToItems(valueBox), cells.count > 0 {
+                    // Success, return items
+                    return SignalProducer(value: SingleSectionListItems.readyToDisplay(cells))
+                } else if let noResultsItemGenerator = noResultsItemGenerator {
+                    // Success without items, return noResult item
+                    return SignalProducer(value: SingleSectionListItems.readyToDisplay([noResultsItemGenerator()]))
                 } else {
-                    // No errorItemGenerator set, return empty items
+                    // Success without items and no noResultsItemGenerator set, return empty items
                     return SignalProducer(value: SingleSectionListItems.readyToDisplay([]))
+                }
+            case let .failure(error):
+                if let cells = boxedValueToItems(state.result?.value), cells.count > 0 {
+                    // Error and there are cached items, return them
+                    return SignalProducer(value: SingleSectionListItems.readyToDisplay(cells))
+                } else {
+                    // Error and no cached items, return error item
+                    if let errorItemGenerator = errorItemGenerator {
+                        return SignalProducer(value: SingleSectionListItems.readyToDisplay([errorItemGenerator(error)]))
+                    } else {
+                        // No errorItemGenerator set, return empty items
+                        return SignalProducer(value: SingleSectionListItems.readyToDisplay([]))
+                    }
                 }
             }
         }

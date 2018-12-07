@@ -1,3 +1,3 @@
 import Foundation
 
-public protocol PullToRefreshDatasource : Datasource where LIT == PullToRefreshLoadImpulseType { }
+public protocol PullToRefreshDatasource : DatasourceProtocol where State.LIT == PullToRefreshLoadImpulseType { }

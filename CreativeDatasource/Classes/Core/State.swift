@@ -1,152 +1,89 @@
 import Foundation
+import Result
 
-public enum State<Value: Any, P: Parameters, LIT: LoadImpulseType, E: DatasourceError>: Equatable {
-    case datasourceNotReady
-    case loading(loadImpulse: LoadImpulse<P, LIT>)
-    case success(valueBox: StrongEqualityValueBox<Value>, loadImpulse: LoadImpulse<P, LIT>)
-    case error(error: E, loadImpulse: LoadImpulse<P, LIT>)
+public protocol StateProtocol: Equatable {
+    associatedtype Value: Any
+    associatedtype P: Parameters
+    associatedtype LIT: LoadImpulseType
+    associatedtype E: DatasourceError
     
-    func value(_ parameters: P) -> StrongEqualityValueBox<Value>? {
-        switch self {
-        case let .success(value, loadImpulse) where loadImpulse.parameters.isCacheCompatible(parameters):
-            return value
-        case .datasourceNotReady, .loading, .success, .error:
-            return nil
+    var provisioningState: ProvisioningState {get}
+    var loadImpulse: LoadImpulse<P, LIT>? {get}
+    var result: Result<StrongEqualityValueBox<Value>, E>? {get}
+    
+    /// Creates an initial state with `provisioningState` == `.notReady`.
+    /// Workaround since generic static vars or functions would not work
+    /// with AnyState.
+    init(notReadyProvisioningState: ProvisioningState)
+    
+    /// Creates an error state.
+    init(error: E, loadImpulse: LoadImpulse<P, LIT>)
+}
+
+public extension StateProtocol {
+    
+    var hasLoadedSuccessfully: Bool {
+        switch provisioningState {
+        case .loading, .notReady:
+            return false
+        case .result:
+            return result?.value?.value != nil
         }
     }
     
-    var loadImpulse: LoadImpulse<P, LIT>? {
-        switch self {
-        case .datasourceNotReady:
-            return nil
-        case let .loading(loadImpulse):
-            return loadImpulse
-        case let .success(_, loadImpulse):
-            return loadImpulse
-        case let .error(_, loadImpulse):
-            return loadImpulse
-        }
-    }
-    
-    var parameters: P? {
-        return loadImpulse?.parameters
-    }
-    
-    public static func == (lhs: State, rhs: State) -> Bool {
-        switch (lhs, rhs) {
-        case (.datasourceNotReady, .datasourceNotReady):
-            return true
-        case (.loading(let lhs), .loading(let rhs)):
-            return lhs == rhs
-        case (.success(let lhs), .success(let rhs)):
-            if lhs.valueBox != rhs.valueBox { return false }
-            if lhs.loadImpulse != rhs.loadImpulse { return false }
-            return true
-        case (.error(let lhs), .error(let rhs)):
-            if lhs.error != rhs.error { return false }
-            if lhs.loadImpulse != rhs.loadImpulse { return false }
-            return true
-        default: return false
-        }
+    var value: Value? {
+        return result?.value?.value
     }
 }
 
-extension State : Codable where Value: Codable, LIT: Codable, P: Codable, E: Codable {
+public enum ProvisioningState: Equatable {
+    case notReady
+    case loading
+    case result
+}
+
+public class AnyState<Value_: Any, P_: Parameters, LIT_: LoadImpulseType, E_: DatasourceError>: StateProtocol {
     
-    private enum CodingKeys: String, CodingKey {
-        case enumCase
-        case loadImpulse
-        case value
-        case error
+    public typealias Value = Value_
+    public typealias P = P_
+    public typealias LIT = LIT_
+    public typealias E = E_
+    
+    public let provisioningState: ProvisioningState
+    public let loadImpulse: LoadImpulse<P, LIT>?
+    public let result: Result<StrongEqualityValueBox<Value>, E>?
+    
+    init<S: StateProtocol>(_ state: S) where S.Value == Value, S.P == P, S.LIT == LIT, S.E == E {
+        self.provisioningState = state.provisioningState
+        self.loadImpulse = state.loadImpulse
+        self.result = state.result
     }
     
-    private enum Case: String {
-        case initial
-        case loading
-        case success
-        case error
-        
-        static func with(_ state: State) -> Case {
-            switch state {
-            case .datasourceNotReady: return .initial
-            case .loading: return .loading
-            case .success: return .success
-            case .error: return .error
-            }
-        }
-        
-        func state(loadImpulse: LoadImpulse<P, LIT>?, value: Value?, error: E?) -> State? {
-            switch self {
-            case .initial:
-                return .datasourceNotReady
-            case .loading:
-                if let loadImpulse = loadImpulse {
-                    return State<Value, P, LIT, E>.loading(loadImpulse: loadImpulse)
-                } else {
-                    return nil
-                }
-            case .success:
-                if let value = value, let loadImpulse = loadImpulse {
-                    return State<Value, P, LIT, E>.success(valueBox: StrongEqualityValueBox(value), loadImpulse: loadImpulse)
-                } else {
-                    return nil
-                }
-            case .error:
-                if let error = error, let loadImpulse = loadImpulse {
-                    return State<Value, P, LIT, E>.error(error: error, loadImpulse: loadImpulse)
-                } else {
-                    return nil
-                }
-            }
-        }
+    public required init(notReadyProvisioningState: ProvisioningState) {
+        self.provisioningState = notReadyProvisioningState
+        self.loadImpulse = nil
+        self.result = nil
     }
     
-    enum StateCodingError: Error {
-        case decoding(String)
-        case decodingLowLevel(Error)
+    public required init(error: E, loadImpulse: LoadImpulse<P, LIT>) {
+        self.provisioningState = .result
+        self.loadImpulse = loadImpulse
+        self.result = Result<StrongEqualityValueBox<Value>, E>.failure(error)
     }
     
-    public init(from decoder: Decoder) throws {
-        let values = try decoder.container(keyedBy: CodingKeys.self)
+    /// Compiler seems to not manage to infer auto-conformance to Equatable because of
+    /// Result<StrongEqualityValueBox<Value>, E>? at the time of writing (XCode 10.1).
+    public static func == (lhs: AnyState<Value_, P_, LIT_, E_>, rhs: AnyState<Value_, P_, LIT_, E_>) -> Bool {
+        guard lhs.provisioningState == rhs.provisioningState else { return false}
+        guard lhs.loadImpulse == rhs.loadImpulse else { return false}
         
-        guard let caseString = try? values.decode(String.self, forKey: .enumCase),
-            let enumCase = Case(rawValue: caseString) else {
-                throw StateCodingError.decoding("StateCodingError: \(dump(values))")
-        }
-        
-        do {
-            let loadImpulse = try values.decodeIfPresent(LoadImpulse<P, LIT>.self, forKey: .loadImpulse)
-            let value = try values.decodeIfPresent(Value.self, forKey: .value)
-            let error = try values.decodeIfPresent(E.self, forKey: .error)
-            
-            if let state = enumCase.state(loadImpulse: loadImpulse, value: value, error: error) {
-                self = state
-            } else {
-                throw StateCodingError.decoding("StateCodingError: \(dump(values))")
-            }
-        } catch {
-            throw StateCodingError.decodingLowLevel(error)
-        }
-        
-    }
-    
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        
-        let enumCase = Case.with(self)
-        try container.encode(enumCase.rawValue, forKey: .enumCase)
-        
-        switch self {
-        case .datasourceNotReady:
-            break
-        case let .loading(loadImpulse):
-            try container.encode(loadImpulse, forKey: .loadImpulse)
-        case let .success(value, _):
-            try container.encode(value.value, forKey: .value)
-            try container.encode(loadImpulse, forKey: .loadImpulse)
-        case let .error(error, _):
-            try container.encode(error, forKey: .error)
-            try container.encode(loadImpulse, forKey: .loadImpulse)
+        switch (lhs.result, rhs.result) {
+        case let (lValue?, rValue?):
+            return lValue == rValue
+        case (nil, nil):
+            return true
+        default:
+            return false
         }
     }
 }
