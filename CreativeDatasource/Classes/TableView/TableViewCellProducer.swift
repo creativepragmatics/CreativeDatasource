@@ -7,33 +7,45 @@ public protocol TableViewCellProducer : ListItemViewProducer {
 }
 
 public enum DefaultTableViewCellProducer<Cell: ListItem>: TableViewCellProducer {
-
     public typealias TableViewCellDequeueIdentifier = String
     
     // Cell class registration is performed automatically:
-    case classAndIdentifier(class: UITableViewCell.Type, identifier: TableViewCellDequeueIdentifier)
+    case classAndIdentifier(class: UITableViewCell.Type, identifier: TableViewCellDequeueIdentifier, configure: (Cell, UITableViewCell) -> ())
     
-    case nibAndIdentifier(nib: UINib, identifier: TableViewCellDequeueIdentifier)
+    case nibAndIdentifier(nib: UINib, identifier: TableViewCellDequeueIdentifier, configure: (Cell, UITableViewCell) -> ())
     
     // No cell class registration is performed:
-    case generator((Cell) -> UITableViewCell)
+    case instantiate((Cell) -> UITableViewCell)
     
     public func view(containingView: UITableView, item: Cell) -> ProducedView {
         switch self {
-        case let .classAndIdentifier(clazz, identifier):
-            containingView.register(clazz, forCellReuseIdentifier: identifier)
+        case let .classAndIdentifier(clazz, identifier, configure):
             guard let tableViewCell = containingView.dequeueReusableCell(withIdentifier: identifier) as? UITableViewCell else {
                 return ProducedView()
             }
+            configure(item, tableViewCell)
             return tableViewCell
-        case let .nibAndIdentifier(nib, identifier):
-            containingView.register(nib, forCellReuseIdentifier: identifier)
+        case let .nibAndIdentifier(nib, identifier, configure):
             guard let tableViewCell = containingView.dequeueReusableCell(withIdentifier: identifier) as? UITableViewCell else {
                 return ProducedView()
             }
+            configure(item, tableViewCell)
             return tableViewCell
-        case let .generator(generator):
-            return generator(item)
+        case let .instantiate(instantiate):
+            return instantiate(item)
         }
     }
+    
+    public func register(itemViewType: Cell.ViewType, at containingView: UITableView) {
+        switch self {
+        case let .classAndIdentifier(clazz, identifier, _):
+            containingView.register(clazz, forCellReuseIdentifier: identifier)
+        case let .nibAndIdentifier(nib, identifier, _):
+            containingView.register(nib, forCellReuseIdentifier: identifier)
+        case let .instantiate(instantiate):
+            break
+        }
+    }
+    
+    public var defaultView: UITableViewCell { return UITableViewCell() }
 }

@@ -2,10 +2,11 @@ import Foundation
 import ReactiveSwift
 import Dwifft
 
-open class SingleSectionTableViewController<Datasource: DatasourceProtocol, Cell: ListItem> : UIViewController {
+open class DefaultSingleSectionTableViewController<Datasource: DatasourceProtocol, CellViewProducer: TableViewCellProducer> : UIViewController where CellViewProducer.Item : DefaultListItem, CellViewProducer.Item.E == Datasource.State.E {
     
+    public typealias Cell = CellViewProducer.Item
     public typealias Cells = SingleSectionListItems<Cell>
-    public typealias TableViewDatasource = SingleSectionTableViewDatasource<Datasource, Cell>
+    public typealias TableViewDatasource = DefaultSingleSectionTableViewDatasource<Datasource, CellViewProducer>
     
     open var refreshControl: UIRefreshControl?
     
@@ -37,9 +38,8 @@ open class SingleSectionTableViewController<Datasource: DatasourceProtocol, Cell
     private let tableViewDatasource: TableViewDatasource
     private var tableViewDiffCalculator: SingleSectionTableViewDiffCalculator<Cell>?
     
-    public init(tableViewDatasource: TableViewDatasource, onPullToRefresh: (() -> ())?) {
+    public init(tableViewDatasource: TableViewDatasource) {
         self.tableViewDatasource = tableViewDatasource
-        self.onPullToRefresh = onPullToRefresh
         super.init(nibName: nil, bundle: nil)
     }
     

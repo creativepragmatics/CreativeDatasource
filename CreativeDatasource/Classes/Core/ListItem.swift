@@ -2,18 +2,39 @@ import Foundation
 import UIKit
 
 public protocol ListItem: Equatable {
-    var isSelectable: Bool {get}
+    associatedtype ViewType: ListItemViewType
+    var viewType: ViewType {get}
     
     // Required to display configuration or system errors
     // for easier debugging.
     init(errorMessage: String)
 }
 
+public protocol ListItemViewType: Equatable, CaseIterable, Hashable {
+    var isSelectable: Bool {get}
+}
+
+public protocol DefaultListItem : ListItem {
+    associatedtype DatasourceItem: Any
+    associatedtype E: DatasourceError
+    static var loadingCell: Self {get}
+    static var noResultsCell: Self {get}
+    static func errorCell(_ error: E) -> Self
+    
+    init(datasourceItem: DatasourceItem)
+}
+
+public protocol HashableListItem : ListItem, Hashable { }
+
+// MARK: List Item View Producer
+
 public protocol ListItemViewProducer {
     associatedtype Item: ListItem
     associatedtype ProducedView: UIView
     associatedtype ContainingView: UIView
+    func register(itemViewType: Item.ViewType, at containingView: ContainingView)
     func view(containingView: ContainingView, item: Item) -> ProducedView
+    var defaultView: ProducedView {get}
 }
 
 public extension ListItemViewProducer {
@@ -28,15 +49,25 @@ public struct AnyListItemViewProducer<Item_: ListItem, ProducedView_: UIView, Co
     public typealias ContainingView = ContainingView_
     
     private let _view: (ContainingView, Item) -> ProducedView
+    private let _register: (Item.ViewType, ContainingView) -> ()
+    public let defaultView: ProducedView
     
     public init<P: ListItemViewProducer>(_ producer: P) where P.Item == Item, P.ProducedView == ProducedView, P.ContainingView == ContainingView {
         self._view = producer.view
+        self._register = producer.register
+        self.defaultView = producer.defaultView
     }
     
     public func view(containingView: ContainingView, item: Item) -> ProducedView {
         return _view(containingView, item)
     }
+    
+    public func register(itemViewType: Item_.ViewType, at containingView: ContainingView_) {
+        _register(itemViewType, containingView)
+    }
 }
+
+// MARK: SingleSectionListItems
 
 public enum SingleSectionListItems<LI: ListItem>: Equatable {
     case datasourceNotReady

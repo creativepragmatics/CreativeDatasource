@@ -32,5 +32,10 @@ public struct AnyDatasource<State_: StateProtocol>: DatasourceProtocol {
 
 public protocol DatasourceError: Error, Equatable {
     
-    var cellContent: ErrorTableViewCellContent {get}
+    var errorType: DatasourceErrorType {get}
+}
+
+public enum DatasourceErrorType: Equatable {
+    case `default`
+    case message(String)
 }
