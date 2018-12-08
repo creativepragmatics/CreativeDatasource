@@ -34,7 +34,7 @@ public enum CachedState<Value_: Any, P_: Parameters, LIT_: LoadImpulseType, E_: 
         case .datasourceNotReady: return nil
         case let .loading(cached, _): return cached.map({ .success($0) })
         case let .success(valueBox, impulse): return .success(valueBox)
-        case let .error(error, _, _): return .failure(error)
+        case let .error(error, valueBox, _): return valueBox.map({ .success($0) }) ?? .failure(error)
         }
     }
     

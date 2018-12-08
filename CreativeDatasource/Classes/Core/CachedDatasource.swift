@@ -169,14 +169,22 @@ public struct CachedDatasource<SubDatasourceState: StateProtocol>: DatasourcePro
                             return State.datasourceNotReady
                         }
                         
-                        persister?.persist(primary)
-                        
                         switch primaryResult {
                         case let .success(valueBox):
+                            persister?.persist(primary)
                             return State.success(valueBox: valueBox, loadImpulse: loadImpulse)
                         case let .failure(error):
+                            if let lastPrimarySuccessResult = cacheCompatibleResult(state: primarySuccess, loadImpulse: loadImpulse) {
+                                switch lastPrimarySuccessResult {
+                                case let .success(valueBox):
+                                    return State.error(error: error, cached: valueBox, loadImpulse: loadImpulse)
+                                case .failure:
+                                    break
+                                }
+                            }
+                            
                             guard let cacheResult = cacheCompatibleResult(state: cache, loadImpulse: loadImpulse) else {
-                                    return State.error(error: error, cached: nil, loadImpulse: loadImpulse)
+                                return State.error(error: error, cached: nil, loadImpulse: loadImpulse)
                             }
                             
                             switch cacheResult {
