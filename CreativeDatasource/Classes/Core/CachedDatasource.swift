@@ -7,7 +7,7 @@ import Result
 /// State coming from the primary datasource is treated as preferential over state from
 /// the cache datasource. You can think of the cache datasource as cache.
 public struct CachedDatasource<SubDatasourceState: StateProtocol>: DatasourceProtocol {
-    public typealias State = CachedState<SubDatasourceState.Value, P, LIT, E>
+    public typealias State = CompositeState<SubDatasourceState.Value, P, LIT, E>
     public typealias P = SubDatasourceState.P
     public typealias LIT = SubDatasourceState.LIT
     public typealias E = SubDatasourceState.E
@@ -133,14 +133,14 @@ public struct CachedDatasource<SubDatasourceState: StateProtocol>: DatasourcePro
                     switch primary.provisioningState {
                     case .notReady, .loading:
                         if let lastPrimarySuccessValueBox = cacheCompatibleResult(state: primarySuccess, loadImpulse: loadImpulse) {
-                            return State.loading(cached: lastPrimarySuccessValueBox, loadImpulse: loadImpulse)
+                            return State.loading(fallback: lastPrimarySuccessValueBox, loadImpulse: loadImpulse)
                         } else if let cachedValueBox = cacheCompatibleResult(state: cache, loadImpulse: loadImpulse) {
-                            return State.loading(cached: cachedValueBox, loadImpulse: loadImpulse)
+                            return State.loading(fallback: cachedValueBox, loadImpulse: loadImpulse)
                         } else {
                             // Neither remote success nor cachely cached value
                             switch primary.provisioningState {
                             case .notReady, .result: return State.datasourceNotReady
-                            case .loading: return State.loading(cached: nil, loadImpulse: loadImpulse)
+                            case .loading: return State.loading(fallback: nil, loadImpulse: loadImpulse)
                             }
                         }
                     case .result:
@@ -149,11 +149,11 @@ public struct CachedDatasource<SubDatasourceState: StateProtocol>: DatasourcePro
                             return State.success(valueBox: primaryValue, loadImpulse: loadImpulse)
                         } else if let error = primary.error {
                             if let lastPrimarySuccessValueBox = cacheCompatibleResult(state: primarySuccess, loadImpulse: loadImpulse) {
-                                return State.error(error: error, cached: lastPrimarySuccessValueBox, loadImpulse: loadImpulse)
+                                return State.error(error: error, fallback: lastPrimarySuccessValueBox, loadImpulse: loadImpulse)
                             } else if let cachedValueBox = cacheCompatibleResult(state: cache, loadImpulse: loadImpulse) {
-                                return State.error(error: error, cached: cachedValueBox, loadImpulse: loadImpulse)
+                                return State.error(error: error, fallback: cachedValueBox, loadImpulse: loadImpulse)
                             } else {
-                                return State.error(error: error, cached: nil, loadImpulse: loadImpulse)
+                                return State.error(error: error, fallback: nil, loadImpulse: loadImpulse)
                             }
                         } else {
                             // Remote state might not match current parameters - return .datasourceNotReady
