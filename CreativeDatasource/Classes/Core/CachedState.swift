@@ -29,12 +29,19 @@ public enum CachedState<Value_: Any, P_: Parameters, LIT_: LoadImpulseType, E_: 
         }
     }
     
-    public var result: Result<StrongEqualityValueBox<Value>, E>? {
+    public var value: StrongEqualityValueBox<Value>? {
         switch self {
         case .datasourceNotReady: return nil
-        case let .loading(cached, _): return cached.map({ .success($0) })
-        case let .success(valueBox, impulse): return .success(valueBox)
-        case let .error(error, valueBox, _): return valueBox.map({ .success($0) }) ?? .failure(error)
+        case let .loading(cached, _): return cached
+        case let .success(valueBox, _): return valueBox
+        case let .error(_, valueBox, _): return valueBox
+        }
+    }
+    
+    public var error: E? {
+        switch self {
+        case .datasourceNotReady, .loading, .success: return nil
+        case let .error(error, _, _): return error
         }
     }
     

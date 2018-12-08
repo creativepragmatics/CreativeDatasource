@@ -29,11 +29,17 @@ public enum AtomicState<Value_: Any, P_: Parameters, LIT_: LoadImpulseType, E_: 
         }
     }
     
-    public var result: Result<StrongEqualityValueBox<Value>, E>? {
+    public var value: StrongEqualityValueBox<Value>? {
         switch self {
-        case .datasourceNotReady, .loading: return nil
-        case let .success(valueBox, _): return .success(valueBox)
-        case let .error(error, _): return .failure(error)
+        case .datasourceNotReady, .loading, .error: return nil
+        case let .success(valueBox, _): return valueBox
+        }
+    }
+    
+    public var error: E? {
+        switch self {
+        case .datasourceNotReady, .loading, .success: return nil
+        case let .error(error, _): return error
         }
     }
     

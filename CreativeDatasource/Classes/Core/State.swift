@@ -9,7 +9,8 @@ public protocol StateProtocol: Equatable {
     
     var provisioningState: ProvisioningState {get}
     var loadImpulse: LoadImpulse<P, LIT>? {get}
-    var result: Result<StrongEqualityValueBox<Value>, E>? {get}
+    var value: StrongEqualityValueBox<Value>? {get}
+    var error: E? {get}
     
     /// Creates an initial state with `provisioningState` == `.notReady`.
     /// Workaround since generic static vars or functions would not work
@@ -27,12 +28,8 @@ public extension StateProtocol {
         case .loading, .notReady:
             return false
         case .result:
-            return result?.value?.value != nil
+            return value?.value != nil && error == nil
         }
-    }
-    
-    var value: Value? {
-        return result?.value?.value
     }
 }
 
@@ -51,39 +48,61 @@ public class AnyState<Value_: Any, P_: Parameters, LIT_: LoadImpulseType, E_: Da
     
     public let provisioningState: ProvisioningState
     public let loadImpulse: LoadImpulse<P, LIT>?
-    public let result: Result<StrongEqualityValueBox<Value>, E>?
+    public let value: StrongEqualityValueBox<Value>?
+    public let error: E?
     
     init<S: StateProtocol>(_ state: S) where S.Value == Value, S.P == P, S.LIT == LIT, S.E == E {
         self.provisioningState = state.provisioningState
         self.loadImpulse = state.loadImpulse
-        self.result = state.result
+        self.value = state.value
+        self.error = state.error
     }
     
     public required init(notReadyProvisioningState: ProvisioningState) {
         self.provisioningState = notReadyProvisioningState
         self.loadImpulse = nil
-        self.result = nil
+        self.value = nil
+        self.error = nil
     }
     
     public required init(error: E, loadImpulse: LoadImpulse<P, LIT>) {
         self.provisioningState = .result
         self.loadImpulse = loadImpulse
-        self.result = Result<StrongEqualityValueBox<Value>, E>.failure(error)
+        self.error = error
+        self.value = nil
     }
     
-    /// Compiler seems to not manage to infer auto-conformance to Equatable because of
-    /// Result<StrongEqualityValueBox<Value>, E>? at the time of writing (XCode 10.1).
     public static func == (lhs: AnyState<Value_, P_, LIT_, E_>, rhs: AnyState<Value_, P_, LIT_, E_>) -> Bool {
         guard lhs.provisioningState == rhs.provisioningState else { return false}
         guard lhs.loadImpulse == rhs.loadImpulse else { return false}
         
-        switch (lhs.result, rhs.result) {
-        case let (lValue?, rValue?):
-            return lValue == rValue
-        case (nil, nil):
-            return true
-        default:
-            return false
-        }
+        let valueEqual: Bool = {
+            switch (lhs.value, rhs.value) {
+            case let (lValue?, rValue?):
+                return lValue == rValue
+            case (nil, nil):
+                return true
+            default:
+                return false
+            }
+        }()
+        
+        guard valueEqual else { return false }
+        
+        let errorEqual: Bool = {
+            switch (lhs.error, rhs.error) {
+            case let (lValue?, rValue?):
+                return lValue == rValue
+            case (nil, nil):
+                return true
+            default:
+                return false
+            }
+        }()
+        
+        guard errorEqual else { return false }
+        
+        return true
     }
+
 }

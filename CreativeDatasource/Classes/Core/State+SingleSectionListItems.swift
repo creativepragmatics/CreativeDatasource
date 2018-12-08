@@ -21,11 +21,10 @@ extension StateProtocol {
             case .notReady:
                 return SingleSectionListItems<Item>.datasourceNotReady
             case let .loading:
-                let cachedValueBox = result?.value
-                if let items = boxedValueToItems(cachedValueBox), items.count > 0 {
+                if let items = boxedValueToItems(value), items.count > 0 {
                     // Loading and there are cached items, return them
                     return SingleSectionListItems<Item>.readyToDisplay(items)
-                } else if let _ = cachedValueBox {
+                } else if let _ = value {
                     // Loading and there are empty cached items, return noResults item
                     if let noResultsItem = noResultsItem {
                         return SingleSectionListItems<Item>.readyToDisplay([noResultsItem()])
@@ -44,11 +43,8 @@ extension StateProtocol {
                     }
                 }
             case let .result:
-                guard let result = result else { return SingleSectionListItems<Item>.readyToDisplay([]) }
-                
-                switch result {
-                case let .success(valueBox):
-                    if let cells = boxedValueToItems(valueBox), cells.count > 0 {
+                if let value = self.value {
+                    if let cells = boxedValueToItems(value), cells.count > 0 {
                         // Success, return items
                         return SingleSectionListItems<Item>.readyToDisplay(cells)
                     } else if let noResultsItem = noResultsItem {
@@ -58,19 +54,17 @@ extension StateProtocol {
                         // Success without items and no noResultsItemGenerator set, return empty items
                         return SingleSectionListItems<Item>.readyToDisplay([])
                     }
-                case let .failure(error):
-                    if let cells = boxedValueToItems(result.value), cells.count > 0 {
-                        // Error and there are cached items, return them
-                        return SingleSectionListItems<Item>.readyToDisplay(cells)
+                } else if let error = self.error {
+                    // Error and no cached items, return error item
+                    if let errorItem = errorItem {
+                        return SingleSectionListItems<Item>.readyToDisplay([errorItem(error)])
                     } else {
-                        // Error and no cached items, return error item
-                        if let errorItem = errorItem {
-                            return SingleSectionListItems<Item>.readyToDisplay([errorItem(error)])
-                        } else {
-                            // No errorItemGenerator set, return empty items
-                            return SingleSectionListItems<Item>.readyToDisplay([])
-                        }
+                        // No errorItemGenerator set, return empty items
+                        return SingleSectionListItems<Item>.readyToDisplay([])
                     }
+                } else {
+                    // Undefined state, should never occur
+                    return SingleSectionListItems<Item>.readyToDisplay([])
                 }
             }
     }

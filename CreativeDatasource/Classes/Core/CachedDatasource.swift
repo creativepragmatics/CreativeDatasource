@@ -25,8 +25,8 @@ public struct CachedDatasource<SubDatasourceState: StateProtocol>: DatasourcePro
     }
     
     public init(loadImpulseEmitter: LoadImpulseEmitterConcrete,
-                primaryDatasource: SubDatasource? = nil,
-                cacheDatasource: SubDatasource? = nil,
+                primaryDatasource: SubDatasource,
+                cacheDatasource: SubDatasource,
                 persister: StatePersisterConcrete? = nil) {
         self.loadImpulseEmitter = loadImpulseEmitter
         let stateProducer = CachedDatasource.cachedStatesProducer(loadImpulseEmitter: loadImpulseEmitter, primaryDatasource: primaryDatasource, cacheDatasource: cacheDatasource, persister: persister)
@@ -130,103 +130,49 @@ public struct CachedDatasource<SubDatasourceState: StateProtocol>: DatasourcePro
                     let ((cache, primary, primarySuccess), loadImpulse) = arg
                     let currentParameters = loadImpulse.parameters
                     
-                    // If fetchPrimary == nil, use cache as main datasource and return immediately:
-                    guard let _ = primaryDatasource else {
-                        return stateForCacheSubDatasourceStateOnly(cache: cache)
-                    }
-                    
                     switch primary.provisioningState {
                     case .notReady, .loading:
-                        if let lastPrimarySuccessResult = cacheCompatibleResult(state: primarySuccess, loadImpulse: loadImpulse) {
-                            switch lastPrimarySuccessResult {
-                            case let .success(valueBox):
-                                return State.loading(cached: valueBox, loadImpulse: loadImpulse)
-                            case .failure:
-                                break
+                        if let lastPrimarySuccessValueBox = cacheCompatibleResult(state: primarySuccess, loadImpulse: loadImpulse) {
+                            return State.loading(cached: lastPrimarySuccessValueBox, loadImpulse: loadImpulse)
+                        } else if let cachedValueBox = cacheCompatibleResult(state: cache, loadImpulse: loadImpulse) {
+                            return State.loading(cached: cachedValueBox, loadImpulse: loadImpulse)
+                        } else {
+                            // Neither remote success nor cachely cached value
+                            switch primary.provisioningState {
+                            case .notReady, .result: return State.datasourceNotReady
+                            case .loading: return State.loading(cached: nil, loadImpulse: loadImpulse)
                             }
-                        }
-                        
-                        if let cacheResult = cacheCompatibleResult(state: cache, loadImpulse: loadImpulse) {
-                            switch cacheResult {
-                            case let .success(valueBox):
-                                return State.loading(cached: valueBox, loadImpulse: loadImpulse)
-                            case let .failure(error):
-                                switch primary.provisioningState {
-                                case .notReady: return State.datasourceNotReady
-                                case .loading: return State.loading(cached: nil, loadImpulse: loadImpulse)
-                                case .result: return State.datasourceNotReady // cannot happen because not in parent case
-                                }
-                            }
-                        }
-                        
-                        // Neither remote success nor cachely cached value
-                        switch primary.provisioningState {
-                        case .notReady, .result: return State.datasourceNotReady
-                        case .loading: return State.loading(cached: nil, loadImpulse: loadImpulse)
                         }
                     case .result:
-                        guard let primaryResult = cacheCompatibleResult(state: primary, loadImpulse: loadImpulse) else {
-                            return State.datasourceNotReady
-                        }
-                        
-                        switch primaryResult {
-                        case let .success(valueBox):
+                        if let primaryValue = cacheCompatibleResult(state: primary, loadImpulse: loadImpulse) {
                             persister?.persist(primary)
-                            return State.success(valueBox: valueBox, loadImpulse: loadImpulse)
-                        case let .failure(error):
-                            if let lastPrimarySuccessResult = cacheCompatibleResult(state: primarySuccess, loadImpulse: loadImpulse) {
-                                switch lastPrimarySuccessResult {
-                                case let .success(valueBox):
-                                    return State.error(error: error, cached: valueBox, loadImpulse: loadImpulse)
-                                case .failure:
-                                    break
-                                }
-                            }
-                            
-                            guard let cacheResult = cacheCompatibleResult(state: cache, loadImpulse: loadImpulse) else {
+                            return State.success(valueBox: primaryValue, loadImpulse: loadImpulse)
+                        } else if let error = primary.error {
+                            if let lastPrimarySuccessValueBox = cacheCompatibleResult(state: primarySuccess, loadImpulse: loadImpulse) {
+                                return State.error(error: error, cached: lastPrimarySuccessValueBox, loadImpulse: loadImpulse)
+                            } else if let cachedValueBox = cacheCompatibleResult(state: cache, loadImpulse: loadImpulse) {
+                                return State.error(error: error, cached: cachedValueBox, loadImpulse: loadImpulse)
+                            } else {
                                 return State.error(error: error, cached: nil, loadImpulse: loadImpulse)
                             }
-                            
-                            switch cacheResult {
-                            case let .success(valueBox): return State.error(error: error, cached: valueBox, loadImpulse: loadImpulse)
-                            case .failure: return State.error(error: error, cached: nil, loadImpulse: loadImpulse)
-                            }
+                        } else {
+                            // Remote state might not match current parameters - return .datasourceNotReady
+                            // so all cached data is purged. This can happen if e.g. an authenticated API
+                            // request has been made, but the user has logged out in the meantime. The result
+                            // must be discarded or the next logged in user might see the previous user's data.
+                            return State.datasourceNotReady
                         }
                     }
                 })
     }
     
-    private static func cacheCompatibleResult(state: SubDatasourceState, loadImpulse: LoadImpulse<P, LIT>) -> Result<StrongEqualityValueBox<SubDatasourceState.Value>, E>? {
-        guard let result = state.result,
+    private static func cacheCompatibleResult(state: SubDatasourceState, loadImpulse: LoadImpulse<P, LIT>) -> StrongEqualityValueBox<SubDatasourceState.Value>? {
+        guard let valueBox = state.value,
             let stateLoadImpulse = state.loadImpulse,
             stateLoadImpulse.isCacheCompatible(loadImpulse) else {
                 return nil
         }
-        return result
-    }
-    
-    private static func stateForCacheSubDatasourceStateOnly(cache: SubDatasourceState) -> State {
-        switch cache.provisioningState {
-        case .notReady:
-            return State.datasourceNotReady
-        case .loading:
-            if let loadImpulse = cache.loadImpulse {
-                return State.loading(cached: nil, loadImpulse: loadImpulse)
-            } else {
-                return State.datasourceNotReady
-            }
-        case .result:
-            if let result = cache.result, let loadImpulse = cache.loadImpulse {
-                switch result {
-                case let .success(valueBox):
-                    return State.success(valueBox: valueBox, loadImpulse: loadImpulse)
-                case let .failure(error):
-                    return State.error(error: error, cached: nil, loadImpulse: loadImpulse)
-                }
-            } else {
-                return State.datasourceNotReady
-            }
-        }
+        return valueBox
     }
     
 }
