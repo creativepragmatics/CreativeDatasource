@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "607FACCF1AFB9204008FA782"
-               BuildableName = "CreativeDatasource_Example.app"
-               BlueprintName = "CreativeDatasource_Example"
-               ReferencedContainer = "container:CreativeDatasource.xcodeproj">
+               BuildableName = "ReactiveListDatasource_Example.app"
+               BlueprintName = "ReactiveListDatasource_Example"
+               ReferencedContainer = "container:ReactiveListDatasource.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
          <BuildActionEntry
@@ -29,9 +29,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "607FACE41AFB9204008FA782"
-               BuildableName = "CreativeDatasource_Tests.xctest"
-               BlueprintName = "CreativeDatasource_Tests"
-               ReferencedContainer = "container:CreativeDatasource.xcodeproj">
+               BuildableName = "ReactiveListDatasource_Tests.xctest"
+               BlueprintName = "ReactiveListDatasource_Tests"
+               ReferencedContainer = "container:ReactiveListDatasource.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -48,9 +48,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "607FACE41AFB9204008FA782"
-               BuildableName = "CreativeDatasource_Tests.xctest"
-               BlueprintName = "CreativeDatasource_Tests"
-               ReferencedContainer = "container:CreativeDatasource.xcodeproj">
+               BuildableName = "ReactiveListDatasource_Tests.xctest"
+               BlueprintName = "ReactiveListDatasource_Tests"
+               ReferencedContainer = "container:ReactiveListDatasource.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -58,9 +58,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "607FACCF1AFB9204008FA782"
-            BuildableName = "CreativeDatasource_Example.app"
-            BlueprintName = "CreativeDatasource_Example"
-            ReferencedContainer = "container:CreativeDatasource.xcodeproj">
+            BuildableName = "ReactiveListDatasource_Example.app"
+            BlueprintName = "ReactiveListDatasource_Example"
+            ReferencedContainer = "container:ReactiveListDatasource.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
       <AdditionalOptions>
@@ -82,9 +82,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "607FACCF1AFB9204008FA782"
-            BuildableName = "CreativeDatasource_Example.app"
-            BlueprintName = "CreativeDatasource_Example"
-            ReferencedContainer = "container:CreativeDatasource.xcodeproj">
+            BuildableName = "ReactiveListDatasource_Example.app"
+            BlueprintName = "ReactiveListDatasource_Example"
+            ReferencedContainer = "container:ReactiveListDatasource.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
       <AdditionalOptions>
@@ -101,9 +101,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "607FACCF1AFB9204008FA782"
-            BuildableName = "CreativeDatasource_Example.app"
-            BlueprintName = "CreativeDatasource_Example"
-            ReferencedContainer = "container:CreativeDatasource.xcodeproj">
+            BuildableName = "ReactiveListDatasource_Example.app"
+            BlueprintName = "ReactiveListDatasource_Example"
+            ReferencedContainer = "container:ReactiveListDatasource.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

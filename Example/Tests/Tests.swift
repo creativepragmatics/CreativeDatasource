@@ -2,7 +2,7 @@
 
 import Quick
 import Nimble
-import CreativeDatasource
+import ReactiveListDatasource
 
 class TableOfContentsSpec: QuickSpec {
     override func spec() {

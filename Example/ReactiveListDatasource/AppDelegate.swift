@@ -1,6 +1,6 @@
 //
 //  AppDelegate.swift
-//  CreativeDatasource
+//  ReactiveListDatasource
 //
 //  Created by Creative Pragmatics GmbH on 12/01/2018.
 //  Copyright (c) 2018 Creative Pragmatics GmbH. All rights reserved.

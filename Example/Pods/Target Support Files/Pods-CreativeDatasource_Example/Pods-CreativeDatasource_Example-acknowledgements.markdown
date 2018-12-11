@@ -1,7 +1,7 @@
 # Acknowledgements
 This application makes use of the following third party libraries:
 
-## CreativeDatasource
+## ReactiveListDatasource
 
 Copyright (c) 2018 Creative Pragmatics GmbH <hi@creativepragmatics.com>
 

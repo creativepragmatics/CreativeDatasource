@@ -1,9 +1,9 @@
 use_frameworks!
 
-target 'CreativeDatasource_Example' do
-  pod 'CreativeDatasource', :path => '../'
+target 'ReactiveListDatasource_Example' do
+  pod 'ReactiveListDatasource', :path => '../'
 
-  target 'CreativeDatasource_Tests' do
+  target 'ReactiveListDatasource_Tests' do
     inherit! :search_paths
 
     pod 'Quick', '~> 1.2.0'

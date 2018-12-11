@@ -1,5 +1,5 @@
 #import <Foundation/Foundation.h>
-@interface PodsDummy_Pods_CreativeDatasource_Tests : NSObject
+@interface PodsDummy_Pods_ReactiveListDatasource_Tests : NSObject
 @end
-@implementation PodsDummy_Pods_CreativeDatasource_Tests
+@implementation PodsDummy_Pods_ReactiveListDatasource_Tests
 @end

@@ -11,6 +11,6 @@
 #endif
 
 
-FOUNDATION_EXPORT double CreativeDatasourceVersionNumber;
-FOUNDATION_EXPORT const unsigned char CreativeDatasourceVersionString[];
+FOUNDATION_EXPORT double ReactiveListDatasourceVersionNumber;
+FOUNDATION_EXPORT const unsigned char ReactiveListDatasourceVersionString[];
 
