@@ -22,3 +22,5 @@ public struct StrongEqualityValueBox<Value: Any>: Equatable {
         return lhs.equalityId == rhs.equalityId
     }
 }
+
+extension StrongEqualityValueBox: Codable where Value : Codable {}

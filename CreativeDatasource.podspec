@@ -30,6 +30,12 @@ mindset. Will eventually be 100% unit tested. Pure Swift.
     ss.dependency 'Dwifft', '~> 0.9'
   end
 
+  s.subspec 'UITableView-Persisted' do |ss|
+    ss.dependency 'CreativeDatasource/Core'
+    ss.dependency 'CreativeDatasource/UITableView'
+    ss.source_files = 'CreativeDatasource/Classes/TableView-Persisted/**/*'
+  end
+
   s.subspec 'CachePersister' do |ss|
     ss.source_files = 'CreativeDatasource/Classes/CachePersister/**/*'
     ss.dependency 'CreativeDatasource/Core'

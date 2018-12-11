@@ -23,6 +23,12 @@ public protocol StateProtocol: Equatable {
 
 public extension StateProtocol {
     
+    public typealias AnyStateType = AnyState<Value, P, LIT, E>
+    
+    public var any: AnyStateType {
+        return AnyStateType(self)
+    }
+    
     var hasLoadedSuccessfully: Bool {
         switch provisioningState {
         case .loading, .notReady:
@@ -31,15 +37,26 @@ public extension StateProtocol {
             return value?.value != nil && error == nil
         }
     }
+    
+    func cacheCompatibleValue(for loadImpulse: LoadImpulse<P, LIT>) -> StrongEqualityValueBox<Value>? {
+        guard let value = self.value,
+            let selfLoadImpulse = self.loadImpulse,
+            selfLoadImpulse.isCacheCompatible(loadImpulse) else {
+                return nil
+        }
+        return value
+    }
+    
 }
 
-public enum ProvisioningState: Equatable {
+/// Type Int because it gives Equatable and Codable conformance for free
+public enum ProvisioningState: Int, Equatable, Codable {
     case notReady
     case loading
     case result
 }
 
-public class AnyState<Value_: Any, P_: Parameters, LIT_: LoadImpulseType, E_: DatasourceError>: StateProtocol {
+public struct AnyState<Value_: Any, P_: Parameters, LIT_: LoadImpulseType, E_: DatasourceError>: StateProtocol {
     
     public typealias Value = Value_
     public typealias P = P_
@@ -58,14 +75,14 @@ public class AnyState<Value_: Any, P_: Parameters, LIT_: LoadImpulseType, E_: Da
         self.error = state.error
     }
     
-    public required init(notReadyProvisioningState: ProvisioningState) {
+    public init(notReadyProvisioningState: ProvisioningState) {
         self.provisioningState = notReadyProvisioningState
         self.loadImpulse = nil
         self.value = nil
         self.error = nil
     }
     
-    public required init(error: E, loadImpulse: LoadImpulse<P, LIT>) {
+    public init(error: E, loadImpulse: LoadImpulse<P, LIT>) {
         self.provisioningState = .result
         self.loadImpulse = loadImpulse
         self.error = error
@@ -106,3 +123,5 @@ public class AnyState<Value_: Any, P_: Parameters, LIT_: LoadImpulseType, E_: Da
     }
 
 }
+
+extension AnyState: Codable where Value: Codable, P: Codable, LIT: Codable, E: Codable {}

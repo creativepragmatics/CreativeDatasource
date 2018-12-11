@@ -7,23 +7,34 @@ public struct DiskStatePersister<State_: StateProtocol & Codable>: StatePersiste
     public typealias StatePersistenceKey = String
     
     private let key: StatePersistenceKey
-    
-    private let transformer: Transformer<State> = {
-        return Transformer.init(toData: { state -> Data in
-            return try JSONEncoder().encode(state)
-        }, fromData: { data -> State in
-            return try JSONDecoder().decode(State.self, from: data)
-        })
-    }()
-    
     private let storage: Storage<State>?
     
-    public init(key: StatePersistenceKey) {
+    public init(key: StatePersistenceKey, storage: Storage<State>?) {
         self.key = key
+        self.storage = storage
+    }
+    
+    public init(key: StatePersistenceKey, diskConfig: DiskConfig? = nil, memoryConfig: MemoryConfig? = nil) {
         
-        let diskConfig = DiskConfig(name: self.key)
-        let memoryConfig = MemoryConfig(expiry: .never, countLimit: 10, totalCostLimit: 10)
-        self.storage = try? Storage<State>.init(diskConfig: diskConfig, memoryConfig: memoryConfig, transformer: self.transformer)
+        var fallbackDiskConfig: DiskConfig {
+            return DiskConfig(name: key)
+        }
+        
+        var fallbackMemoryConfig: MemoryConfig {
+            return MemoryConfig(expiry: .never, countLimit: 10, totalCostLimit: 10)
+        }
+        
+        var transformer: Transformer<State> {
+            return Transformer.init(toData: { state -> Data in
+                return try JSONEncoder().encode(state)
+            }, fromData: { data -> State in
+                return try JSONDecoder().decode(State.self, from: data)
+            })
+        }
+        
+        let storage = try? Storage<State>.init(diskConfig: diskConfig ?? fallbackDiskConfig, memoryConfig: memoryConfig ?? fallbackMemoryConfig, transformer: transformer)
+        
+        self.init(key: key, storage: storage)
     }
     
     public func persist(_ state: State) {

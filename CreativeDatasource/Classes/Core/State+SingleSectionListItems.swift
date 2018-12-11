@@ -12,61 +12,67 @@ extension StateProtocol {
                                                        loadingItem: (() -> Item)? = nil,
                                                        errorItem: ((E) -> Item)? = nil,
                                                        noResultsItem: (() -> Item)? = nil) -> SingleSectionListItems<Item> {
-            
-            func boxedValueToItems(_ box: StrongEqualityValueBox<Value>?) -> [Item]? {
-                return (box?.value).flatMap({ valueToItems($0) })
-            }
-            
-            switch provisioningState {
-            case .notReady:
-                return SingleSectionListItems<Item>.datasourceNotReady
-            case let .loading:
-                if let items = boxedValueToItems(value), items.count > 0 {
-                    // Loading and there are cached items, return them
-                    return SingleSectionListItems<Item>.readyToDisplay(items)
-                } else if let _ = value {
-                    // Loading and there are empty cached items, return noResults item
-                    if let noResultsItem = noResultsItem {
-                        return SingleSectionListItems<Item>.readyToDisplay([noResultsItem()])
-                    } else {
-                        // No noResultsItemGenerator set, return empty items
-                        return SingleSectionListItems<Item>.readyToDisplay([])
-                    }
+        
+        func boxedValueToItems(_ box: StrongEqualityValueBox<Value>?) -> [Item]? {
+            return (box?.value).flatMap({ valueToItems($0) })
+        }
+        
+        func noResultsOrErrorItem() -> SingleSectionListItems<Item> {
+            if let error = self.error {
+                if let errorItem = errorItem {
+                    return SingleSectionListItems<Item>.readyToDisplay([errorItem(error)])
+                } else if let noResultsItem = noResultsItem {
+                    return SingleSectionListItems<Item>.readyToDisplay([noResultsItem()])
                 } else {
-                    // Loading and there is no cached value, return loading item
-                    if let loadingItem = loadingItem {
-                        // Delay the loading cell by 0.1 seconds
-                        return SingleSectionListItems<Item>.readyToDisplay([loadingItem()])
-                    } else {
-                        // No loadingCellGenerator set, return empty items
-                        return SingleSectionListItems<Item>.readyToDisplay([])
-                    }
+                    // No errorItemGenerator set, return empty items
+                    return SingleSectionListItems<Item>.readyToDisplay([])
                 }
-            case let .result:
-                if let value = self.value {
-                    if let cells = boxedValueToItems(value), cells.count > 0 {
-                        // Success, return items
-                        return SingleSectionListItems<Item>.readyToDisplay(cells)
-                    } else if let noResultsItem = noResultsItem {
-                        // Success without items, return noResult item
-                        return SingleSectionListItems<Item>.readyToDisplay([noResultsItem()])
-                    } else {
-                        // Success without items and no noResultsItemGenerator set, return empty items
-                        return SingleSectionListItems<Item>.readyToDisplay([])
-                    }
-                } else if let error = self.error {
-                    // Error and no cached items, return error item
-                    if let errorItem = errorItem {
-                        return SingleSectionListItems<Item>.readyToDisplay([errorItem(error)])
-                    } else {
-                        // No errorItemGenerator set, return empty items
-                        return SingleSectionListItems<Item>.readyToDisplay([])
-                    }
+            } else {
+                if let noResultsItem = noResultsItem {
+                    return SingleSectionListItems<Item>.readyToDisplay([noResultsItem()])
                 } else {
-                    // Undefined state, should never occur
+                    // No noResultsItemGenerator set, return empty items
                     return SingleSectionListItems<Item>.readyToDisplay([])
                 }
             }
+        }
+        
+        switch provisioningState {
+        case .notReady:
+            return SingleSectionListItems<Item>.datasourceNotReady
+        case let .loading:
+            if let items = boxedValueToItems(value), items.count > 0 {
+                // Loading and there are cached items, return them
+                return SingleSectionListItems<Item>.readyToDisplay(items)
+            } else if let error = self.error, let errorItem = errorItem {
+                // Loading, error, and there are empty cached items, return error item
+                return SingleSectionListItems<Item>.readyToDisplay([errorItem(error)])
+            } else if let _ = value {
+                // Loading and there are empty cached items, return error or noResults item
+                return noResultsOrErrorItem()
+            } else {
+                // Loading and there is no cached value, return loading item
+                if let loadingItem = loadingItem {
+                    return SingleSectionListItems<Item>.readyToDisplay([loadingItem()])
+                } else {
+                    // No loadingCellGenerator set, return empty items
+                    return SingleSectionListItems<Item>.readyToDisplay([])
+                }
+            }
+        case let .result:
+            if let value = self.value {
+                if let cells = boxedValueToItems(value), cells.count > 0 {
+                    // Success, return items
+                    return SingleSectionListItems<Item>.readyToDisplay(cells)
+                } else {
+                    // Success without items, return error or noResults item
+                    return noResultsOrErrorItem()
+                }
+            } else {
+                // Error and no cached items, return error item (or noResults item as fallback)
+                return noResultsOrErrorItem()
+            }
+        }
     }
 }
 

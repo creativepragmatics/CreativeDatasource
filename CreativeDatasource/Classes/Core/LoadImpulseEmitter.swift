@@ -2,7 +2,7 @@ import Foundation
 import ReactiveSwift
 import Result
 
-public protocol LoadImpulseEmitter {
+public protocol LoadImpulseEmitterProtocol {
     associatedtype P: Parameters
     associatedtype LIT: LoadImpulseType
     
@@ -10,20 +10,20 @@ public protocol LoadImpulseEmitter {
     func emit(_ loadImpulse: LoadImpulse<P, LIT>)
 }
 
-public extension LoadImpulseEmitter {
+public extension LoadImpulseEmitterProtocol {
     public var any: AnyLoadImpulseEmitter<P, LIT> {
         return AnyLoadImpulseEmitter(self)
     }
 }
 
-public struct AnyLoadImpulseEmitter<P_: Parameters, LIT_: LoadImpulseType>: LoadImpulseEmitter {
+public struct AnyLoadImpulseEmitter<P_: Parameters, LIT_: LoadImpulseType>: LoadImpulseEmitterProtocol {
     public typealias P = P_
     public typealias LIT = LIT_
     
     public let loadImpulses: SignalProducer<LoadImpulse<P_, LIT_>, NoError>
     private let _emit: (LoadImpulse<P, LIT>) -> ()
     
-    init<E: LoadImpulseEmitter>(_ emitter: E) where E.P == P, E.LIT == LIT {
+    init<E: LoadImpulseEmitterProtocol>(_ emitter: E) where E.P == P, E.LIT == LIT {
         self.loadImpulses = emitter.loadImpulses
         self._emit = emitter.emit
     }
@@ -33,7 +33,8 @@ public struct AnyLoadImpulseEmitter<P_: Parameters, LIT_: LoadImpulseType>: Load
     }
 }
 
-public struct DefaultLoadImpulseEmitter<P_: Parameters, LIT_: LoadImpulseType>: LoadImpulseEmitter {
+
+public struct DefaultLoadImpulseEmitter<P_: Parameters, LIT_: LoadImpulseType>: LoadImpulseEmitterProtocol {
     public typealias P = P_
     public typealias LIT = LIT_
     public typealias LI = LoadImpulse<P, LIT>
@@ -64,7 +65,7 @@ public struct DefaultLoadImpulseEmitter<P_: Parameters, LIT_: LoadImpulseType>: 
 
 }
 
-public struct RecurringLoadImpulseEmitter<P_: Parameters, LIT_: LoadImpulseType>: LoadImpulseEmitter {
+public struct RecurringLoadImpulseEmitter<P_: Parameters, LIT_: LoadImpulseType>: LoadImpulseEmitterProtocol {
     public typealias P = P_
     public typealias LIT = LIT_
     public typealias LI = LoadImpulse<P, LIT>
