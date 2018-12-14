@@ -10,6 +10,11 @@ open class DefaultSingleSectionTableViewDatasource<Datasource: DatasourceProtoco
     private let dataSource: Datasource
     public var core: Core
     
+    /// If true, use heightAtIndexPath to store item heights. Most likely
+    /// only makes sense in TableViews with autolayouted cells.
+    public var useFixedItemHeights = false
+    public var heightAtIndexPath: [IndexPath: CGFloat] = [:]
+    
     lazy var cells: Property<Core.Items> = {
         return Property<Core.Items>(initial: Core.Items.datasourceNotReady, then: self.cellsProducer())
     }()
@@ -53,7 +58,7 @@ open class DefaultSingleSectionTableViewDatasource<Datasource: DatasourceProtoco
         guard let cells = cells.value.items, indexPath.row < cells.count else { return UITableViewCell() }
         let cell = cells[indexPath.row]
         if let itemViewProducer = core.itemToViewMapping[cell.viewType] {
-            return itemViewProducer.view(containingView: tableView, item: cell)
+            return itemViewProducer.view(containingView: tableView, item: cell, for: indexPath)
         } else {
             let fallbackCell = UITableViewCell()
             fallbackCell.textLabel?.text = "Set DefaultSingleSectionListViewDatasourceCore.itemToViewMapping"
@@ -71,11 +76,17 @@ open class DefaultSingleSectionTableViewDatasource<Datasource: DatasourceProtoco
     }
     
     public func tableView(_ tableView: UITableView, estimatedHeightForRowAt indexPath: IndexPath) -> CGFloat {
-        return core.heightAtIndexPath[indexPath] ?? UITableView.automaticDimension
+        if useFixedItemHeights {
+            return heightAtIndexPath[indexPath] ?? UITableView.automaticDimension
+        } else {
+            return UITableView.automaticDimension
+        }
     }
     
     public func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
-        core.heightAtIndexPath[indexPath] = cell.frame.size.height
+        if useFixedItemHeights {
+            heightAtIndexPath[indexPath] = cell.frame.size.height
+        }
     }
     
     public func scrollViewDidScroll(_ scrollView: UIScrollView) {

@@ -2,9 +2,9 @@ import Foundation
 
 public struct LoadImpulse<P: Parameters, LIT : LoadImpulseType>: Equatable {
     
-    var parameters: P
-    let loadImpulseType: LIT
-    let skipIfResultAvailable: Bool
+    public var parameters: P
+    public let loadImpulseType: LIT
+    public let skipIfResultAvailable: Bool
     
     public init(parameters: P, loadImpulseType: LIT, skipIfResultAvailable: Bool = false) {
         self.parameters = parameters
@@ -12,13 +12,12 @@ public struct LoadImpulse<P: Parameters, LIT : LoadImpulseType>: Equatable {
         self.skipIfResultAvailable = skipIfResultAvailable
     }
     
-    func with(parameters: P) -> LoadImpulse<P, LIT> {
+    public func with(parameters: P) -> LoadImpulse<P, LIT> {
         var modified = self
         modified.parameters = parameters
         return modified
     }
     
-    /// Convenience shorthand
     func isCacheCompatible(_ candidate: LoadImpulse<P, LIT>) -> Bool {
         return parameters.isCacheCompatible(candidate.parameters)
     }

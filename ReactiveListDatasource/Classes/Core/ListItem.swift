@@ -33,7 +33,7 @@ public protocol ListItemViewProducer {
     associatedtype ProducedView: UIView
     associatedtype ContainingView: UIView
     func register(itemViewType: Item.ViewType, at containingView: ContainingView)
-    func view(containingView: ContainingView, item: Item) -> ProducedView
+    func view(containingView: ContainingView, item: Item, for indexPath: IndexPath) -> ProducedView
     var defaultView: ProducedView {get}
 }
 
@@ -48,7 +48,7 @@ public struct AnyListItemViewProducer<Item_: ListItem, ProducedView_: UIView, Co
     public typealias ProducedView = ProducedView_
     public typealias ContainingView = ContainingView_
     
-    private let _view: (ContainingView, Item) -> ProducedView
+    private let _view: (ContainingView, Item, IndexPath) -> ProducedView
     private let _register: (Item.ViewType, ContainingView) -> ()
     public let defaultView: ProducedView
     
@@ -58,8 +58,8 @@ public struct AnyListItemViewProducer<Item_: ListItem, ProducedView_: UIView, Co
         self.defaultView = producer.defaultView
     }
     
-    public func view(containingView: ContainingView, item: Item) -> ProducedView {
-        return _view(containingView, item)
+    public func view(containingView: ContainingView, item: Item, for indexPath: IndexPath) -> ProducedView {
+        return _view(containingView, item, indexPath)
     }
     
     public func register(itemViewType: Item_.ViewType, at containingView: ContainingView_) {
@@ -77,6 +77,30 @@ public enum SingleSectionListItems<LI: ListItem>: Equatable {
         switch self {
         case .datasourceNotReady: return nil
         case let .readyToDisplay(items): return items
+        }
+    }
+}
+
+public struct SectionWithItems<Item: ListItem, Section: ListSection>: Equatable {
+    public let section: Section
+    public let items: [Item]
+    
+    public init(_ section: Section, _ items: [Item]) {
+        self.section = section
+        self.items = items
+    }
+}
+
+public enum ListSections<Item: ListItem, Section: ListSection>: Equatable {
+    public typealias SectionWithItemsConcrete = SectionWithItems<Item, Section>
+    
+    case datasourceNotReady
+    case readyToDisplay([SectionWithItemsConcrete])
+    
+    public var sectionsWithItems: [SectionWithItems<Item, Section>]? {
+        switch self {
+        case .datasourceNotReady: return nil
+        case let .readyToDisplay(sectionsWithItems): return sectionsWithItems
         }
     }
 }

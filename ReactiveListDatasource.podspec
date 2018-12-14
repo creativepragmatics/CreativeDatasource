@@ -36,6 +36,12 @@ mindset. Will eventually be 100% unit tested. Pure Swift.
     ss.source_files = 'ReactiveListDatasource/Classes/TableView-Persisted/**/*'
   end
 
+    s.subspec 'UICollectionView' do |ss|
+    ss.source_files = 'ReactiveListDatasource/Classes/CollectionView/**/*'
+    ss.dependency 'ReactiveListDatasource/Core'
+    ss.dependency 'Dwifft', '~> 0.9'
+  end
+
   s.subspec 'CachePersister' do |ss|
     ss.source_files = 'ReactiveListDatasource/Classes/CachePersister/**/*'
     ss.dependency 'ReactiveListDatasource/Core'

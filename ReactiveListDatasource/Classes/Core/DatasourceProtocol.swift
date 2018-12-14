@@ -45,10 +45,10 @@ public struct AnyDatasource<State_: StateProtocol>: DatasourceProtocol {
 
 public protocol DatasourceError: Error, Equatable {
     
-    var errorType: DatasourceErrorType {get}
+    var errorMessage: DatasourceErrorMessage {get}
 }
 
-public enum DatasourceErrorType: Equatable, Codable {
+public enum DatasourceErrorMessage: Equatable, Codable {
     case `default`
     case message(String)
     
@@ -94,5 +94,5 @@ public enum DatasourceErrorType: Equatable, Codable {
 
 public protocol CachedDatasourceError: DatasourceError {
     
-    init(cacheLoadError type: DatasourceErrorType)
+    init(cacheLoadError type: DatasourceErrorMessage)
 }

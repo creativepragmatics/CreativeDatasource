@@ -7,6 +7,7 @@ public protocol TableViewCellProducer : ListItemViewProducer {
 }
 
 public enum DefaultTableViewCellProducer<Cell: ListItem>: TableViewCellProducer {
+    public typealias Item = Cell
     public typealias TableViewCellDequeueIdentifier = String
     
     // Cell class registration is performed automatically:
@@ -17,16 +18,16 @@ public enum DefaultTableViewCellProducer<Cell: ListItem>: TableViewCellProducer 
     // No cell class registration is performed:
     case instantiate((Cell) -> UITableViewCell)
     
-    public func view(containingView: UITableView, item: Cell) -> ProducedView {
+    public func view(containingView: UITableView, item: Cell, for indexPath: IndexPath) -> ProducedView {
         switch self {
         case let .classAndIdentifier(clazz, identifier, configure):
-            guard let tableViewCell = containingView.dequeueReusableCell(withIdentifier: identifier) as? UITableViewCell else {
+            guard let tableViewCell = containingView.dequeueReusableCell(withIdentifier: identifier, for: indexPath) as? UITableViewCell else {
                 return ProducedView()
             }
             configure(item, tableViewCell)
             return tableViewCell
         case let .nibAndIdentifier(nib, identifier, configure):
-            guard let tableViewCell = containingView.dequeueReusableCell(withIdentifier: identifier) as? UITableViewCell else {
+            guard let tableViewCell = containingView.dequeueReusableCell(withIdentifier: identifier, for: indexPath) as? UITableViewCell else {
                 return ProducedView()
             }
             configure(item, tableViewCell)
