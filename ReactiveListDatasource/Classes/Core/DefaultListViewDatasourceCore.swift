@@ -9,13 +9,13 @@ public struct DefaultListViewDatasourceCore<Datasource: DatasourceProtocol, Item
     public typealias Section = Section_
     public typealias Sections = ListSections<Item, Section>
     public typealias ItemToView = (Item.ViewType) -> ItemViewProducer
-    public typealias ValueToSections = (Datasource.State.Value) -> [SectionWithItems<Item, Section>]?
+    public typealias ValueToSections = (Datasource.DatasourceState.Value) -> [SectionWithItems<Item, Section>]?
     public typealias ItemSelected = (Item, Section) -> ()
     public typealias StateToSections =
-        (_ state: Datasource.State,
+        (_ state: Datasource.DatasourceState,
         _ valueToSections: @escaping ValueToSections,
         _ loadingSection: (() -> SectionWithItems<Item, Section>)?,
-        _ errorSection: ((Datasource.State.E) -> SectionWithItems<Item, Section>)?,
+        _ errorSection: ((Datasource.E) -> SectionWithItems<Item, Section>)?,
         _ noResultsSection: (() -> SectionWithItems<Item, Section>)?) -> ListSections<Item, Section>
     
     public var stateToSections: StateToSections // Might be set by
@@ -24,7 +24,7 @@ public struct DefaultListViewDatasourceCore<Datasource: DatasourceProtocol, Item
     public var itemToViewMapping: [Item.ViewType: ItemViewProducer] = [:]
     
     public var loadingSection: (() -> Sections.SectionWithItemsConcrete)?
-    public var errorSection: ((Datasource.State.E) -> Sections.SectionWithItemsConcrete)?
+    public var errorSection: ((Datasource.E) -> Sections.SectionWithItemsConcrete)?
     public var noResultsSection: (() -> Sections.SectionWithItemsConcrete)?
     public let scrollViewDidScroll = Signal<Void, NoError>.pipe()
     
@@ -32,10 +32,10 @@ public struct DefaultListViewDatasourceCore<Datasource: DatasourceProtocol, Item
         self.stateToSections = stateToSections
     }
     
-    public static func defaultStateToSections(state: Datasource.State,
+    public static func defaultStateToSections(state: Datasource.DatasourceState,
                                            valueToSections: @escaping ValueToSections,
                                            loadingSection: (() -> SectionWithItems<Item, Section>)?,
-                                           errorSection: ((Datasource.State.E) -> SectionWithItems<Item, Section>)?,
+                                           errorSection: ((Datasource.E) -> SectionWithItems<Item, Section>)?,
                                            noResultsSection: (() -> SectionWithItems<Item, Section>)?) -> ListSections<Item, Section> {
         return state.listItems(valueToSections: valueToSections, loadingSection: loadingSection, errorSection: errorSection, noResultsSection: noResultsSection)
     }
@@ -114,7 +114,7 @@ extension DefaultListViewDatasourceCore {
         }
         
         @discardableResult
-        public func errorSection(_ closure: @escaping (Datasource.State.E) -> SectionWithItems<Item, Section>) -> Builder {
+        public func errorSection(_ closure: @escaping (Datasource.E) -> SectionWithItems<Item, Section>) -> Builder {
             var core = self.core
             core.errorSection = closure
             return core.builder

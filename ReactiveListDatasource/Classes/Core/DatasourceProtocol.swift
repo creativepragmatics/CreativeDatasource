@@ -3,9 +3,12 @@ import ReactiveSwift
 import Result
 
 public protocol DatasourceProtocol {
-    associatedtype State: StateProtocol
+    associatedtype Value: Any
+    associatedtype P: Parameters
+    associatedtype E: DatasourceError
+    typealias DatasourceState = State<Value, P, E>
     
-    var state: SignalProducer<State, NoError> {get}
+    var state: SignalProducer<DatasourceState, NoError> {get}
     
     /// Must return `true` if the datasource sends a `state`
     /// immediately on subscription.
@@ -13,31 +16,29 @@ public protocol DatasourceProtocol {
 }
 
 public extension DatasourceProtocol {
-    public var any: AnyDatasource<State> {
+    public var any: AnyDatasource<Value, P, E> {
         return AnyDatasource(self)
     }
     
-    public var anyState: SignalProducer<AnyState<State.Value, State.P, State.LIT, State.E>, NoError> {
-        return self.state.map({ $0.any })
-    }
-    
-    var stateWithSynchronousInitial: SignalProducer<State, NoError> {
+    var stateWithSynchronousInitial: SignalProducer<DatasourceState, NoError> {
         if loadsSynchronously {
             return state
         } else {
-            let initialState = SignalProducer(value: State(notReadyProvisioningState: .notReady))
+            let initialState = SignalProducer(value: DatasourceState.notReady)
             return initialState.concat(state)
         }
     }
 }
 
-public struct AnyDatasource<State_: StateProtocol>: DatasourceProtocol {
-    public typealias State = State_
+public struct AnyDatasource<Value_, P_: Parameters, E_: DatasourceError>: DatasourceProtocol {
+    public typealias Value = Value_
+    public typealias P = P_
+    public typealias E = E_
     
-    public let state: SignalProducer<State, NoError>
+    public let state: SignalProducer<DatasourceState, NoError>
     public let loadsSynchronously: Bool
     
-    init<D: DatasourceProtocol>(_ datasource: D) where D.State == State {
+    init<D: DatasourceProtocol>(_ datasource: D) where D.DatasourceState == DatasourceState {
         self.state = datasource.state
         self.loadsSynchronously = datasource.loadsSynchronously
     }

@@ -1,15 +1,17 @@
 import Foundation
 import Cache
 
-public struct DiskStatePersister<State_: StateProtocol & Codable>: StatePersister {
-    public typealias State = State_
+public struct DiskStatePersister<Value_: Codable, P_: Parameters & Codable, E_: DatasourceError & Codable>: StatePersister {
+    public typealias Value = Value_
+    public typealias P = P_
+    public typealias E = E_
     
     public typealias StatePersistenceKey = String
     
     private let key: StatePersistenceKey
-    private let storage: Storage<State>?
+    private let storage: Storage<PersistedState>?
     
-    public init(key: StatePersistenceKey, storage: Storage<State>?) {
+    public init(key: StatePersistenceKey, storage: Storage<PersistedState>?) {
         self.key = key
         self.storage = storage
     }
@@ -24,10 +26,10 @@ public struct DiskStatePersister<State_: StateProtocol & Codable>: StatePersiste
             return MemoryConfig(expiry: .never, countLimit: 10, totalCostLimit: 10)
         }
         
-        var transformer: Transformer<State> {
+        var transformer: Transformer<PersistedState> {
             return Transformer.init(toData: { state -> Data in
                 return try JSONEncoder().encode(state)
-            }, fromData: { data -> State in
+            }, fromData: { data -> PersistedState in
                 return try JSONDecoder().decode(State.self, from: data)
             })
         }
@@ -37,11 +39,11 @@ public struct DiskStatePersister<State_: StateProtocol & Codable>: StatePersiste
         self.init(key: key, storage: storage)
     }
     
-    public func persist(_ state: State) {
+    public func persist(_ state: PersistedState) {
         try? storage?.setObject(state, forKey: "latestValue")
     }
     
-    public func load(_ parameters: State.P) -> State? {
+    public func load(_ parameters: P) -> PersistedState? {
         guard let storage = self.storage else {
             return nil
         }

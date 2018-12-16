@@ -5,12 +5,13 @@ import UIKit
 // mix data (ListItem) with view attributes (supplementary views).
 // Keeping this file for now, just in case.
 
-public protocol CollectionReusableViewProducer : ListItemViewProducer {
-    typealias ProducedView = UICollectionReusableView
-    typealias ContainingView = UICollectionView
-}
+public protocol CollectionReusableViewProducer : ListItemViewProducer where ProducedView == UICollectionReusableView, ContainingView == UICollectionView {}
 
 public enum DefaultCollectionReusableViewProducer<ReusableView: ListItem>: CollectionReusableViewProducer {
+    public typealias Item = ReusableView
+    public typealias ProducedView = UICollectionReusableView
+    public typealias ContainingView = UICollectionView
+    
     public typealias UICollectionViewDequeueIdentifier = String
 
     // Cell class registration is performed automatically:

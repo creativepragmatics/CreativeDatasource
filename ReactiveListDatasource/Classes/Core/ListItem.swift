@@ -10,7 +10,7 @@ public protocol ListItem: Equatable {
     init(errorMessage: String)
 }
 
-public protocol ListItemViewType: Equatable, CaseIterable, Hashable {
+public protocol ListItemViewType: CaseIterable, Hashable {
     var isSelectable: Bool {get}
 }
 
@@ -70,12 +70,12 @@ public struct AnyListItemViewProducer<Item_: ListItem, ProducedView_: UIView, Co
 // MARK: SingleSectionListItems
 
 public enum SingleSectionListItems<LI: ListItem>: Equatable {
-    case datasourceNotReady
+    case notReady
     case readyToDisplay([LI])
 
     public var items: [LI]? {
         switch self {
-        case .datasourceNotReady: return nil
+        case .notReady: return nil
         case let .readyToDisplay(items): return items
         }
     }
@@ -94,12 +94,12 @@ public struct SectionWithItems<Item: ListItem, Section: ListSection>: Equatable 
 public enum ListSections<Item: ListItem, Section: ListSection>: Equatable {
     public typealias SectionWithItemsConcrete = SectionWithItems<Item, Section>
     
-    case datasourceNotReady
+    case notReady
     case readyToDisplay([SectionWithItemsConcrete])
     
     public var sectionsWithItems: [SectionWithItems<Item, Section>]? {
         switch self {
-        case .datasourceNotReady: return nil
+        case .notReady: return nil
         case let .readyToDisplay(sectionsWithItems): return sectionsWithItems
         }
     }

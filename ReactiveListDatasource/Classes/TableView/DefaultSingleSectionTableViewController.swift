@@ -2,7 +2,7 @@ import Foundation
 import ReactiveSwift
 import Dwifft
 
-open class DefaultSingleSectionTableViewController<Datasource: DatasourceProtocol, CellViewProducer: TableViewCellProducer> : UIViewController where CellViewProducer.Item : DefaultListItem, CellViewProducer.Item.E == Datasource.State.E {
+open class DefaultSingleSectionTableViewController<Datasource: DatasourceProtocol, CellViewProducer: TableViewCellProducer> : UIViewController where CellViewProducer.Item : DefaultListItem, CellViewProducer.Item.E == Datasource.E {
     
     public typealias Cell = CellViewProducer.Item
     public typealias Cells = SingleSectionListItems<Cell>
@@ -94,7 +94,7 @@ open class DefaultSingleSectionTableViewController<Datasource: DatasourceProtoco
                 self.tableViewDiffCalculator = self.createTableViewDiffCalculator(initial: previousCells)
             }
             self.tableViewDiffCalculator?.rows = next.items ?? []
-        case .readyToDisplay, .datasourceNotReady:
+        case .readyToDisplay, .notReady:
             // Animations disabled or view invisible - skip animations.
             self.tableViewDiffCalculator = nil
             DispatchQueue.main.async { [weak self] in

@@ -8,13 +8,13 @@ public struct DefaultSingleSectionListViewDatasourceCore<Datasource: DatasourceP
     public typealias Item = ItemViewProducer.Item
     public typealias Items = SingleSectionListItems<Item>
     public typealias ItemToView = (Item.ViewType) -> ItemViewProducer
-    public typealias ValueToItems = (Datasource.State.Value) -> [Item]?
+    public typealias ValueToItems = (Datasource.DatasourceState.Value) -> [Item]?
     public typealias ItemSelected = (Item) -> ()
     public typealias StateToItems =
-        (_ state: Datasource.State,
+        (_ state: Datasource.DatasourceState,
         _ valueToItems: @escaping ValueToItems,
         _ loadingItem: (() -> Item)?,
-        _ errorItem: ((Datasource.State.E) -> Item)?,
+        _ errorItem: ((Datasource.E) -> Item)?,
         _ noResultsItem: (() -> Item)?) -> SingleSectionListItems<Item>
     
     public var stateToItems: StateToItems // Might be set by
@@ -23,7 +23,7 @@ public struct DefaultSingleSectionListViewDatasourceCore<Datasource: DatasourceP
     public var itemToViewMapping: [Item.ViewType: ItemViewProducer] = [:]
     
     public var loadingItem: (() -> Item)?
-    public var errorItem: ((Datasource.State.E) -> Item)?
+    public var errorItem: ((Datasource.E) -> Item)?
     public var noResultsItem: (() -> Item)?
     public let scrollViewDidScroll = Signal<Void, NoError>.pipe()
     
@@ -36,10 +36,10 @@ public struct DefaultSingleSectionListViewDatasourceCore<Datasource: DatasourceP
         self.stateToItems = stateToItems
     }
     
-    public static func defaultStateToItems(state: Datasource.State,
+    public static func defaultStateToItems(state: Datasource.DatasourceState,
                                            valueToItems: @escaping ValueToItems,
                                            loadingItem: (() -> Item)?,
-                                           errorItem: ((Datasource.State.E) -> Item)?,
+                                           errorItem: ((Datasource.E) -> Item)?,
                                            noResultsItem: (() -> Item)?) -> SingleSectionListItems<Item> {
         return state.singleSectionListItems(valueToItems: valueToItems, loadingItem: loadingItem, errorItem: errorItem, noResultsItem: noResultsItem)
     }
@@ -118,7 +118,7 @@ extension DefaultSingleSectionListViewDatasourceCore {
         }
         
         @discardableResult
-        public func errorItem(_ closure: @escaping (Datasource.State.E) -> Item) -> Builder {
+        public func errorItem(_ closure: @escaping (Datasource.E) -> Item) -> Builder {
             var core = self.core
             core.errorItem = closure
             return core.builder

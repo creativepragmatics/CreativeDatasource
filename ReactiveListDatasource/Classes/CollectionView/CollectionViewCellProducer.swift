@@ -1,12 +1,13 @@
 import Foundation
 import UIKit
 
-public protocol CollectionViewCellProducer : ListItemViewProducer {
-    typealias ProducedView = UICollectionViewCell
-    typealias ContainingView = UICollectionView
-}
+public protocol CollectionViewCellProducer : ListItemViewProducer where ProducedView == UICollectionViewCell, ContainingView == UICollectionView {}
 
 public enum DefaultCollectionViewCellProducer<Cell: ListItem>: CollectionViewCellProducer {
+    public typealias Item = Cell
+    public typealias ProducedView = UICollectionViewCell
+    public typealias ContainingView = UICollectionView
+    
     public typealias UICollectionViewDequeueIdentifier = String
     
     // Cell class registration is performed automatically:
@@ -16,16 +17,12 @@ public enum DefaultCollectionViewCellProducer<Cell: ListItem>: CollectionViewCel
     
     public func view(containingView: UICollectionView, item: Cell, for indexPath: IndexPath) -> ProducedView {
         switch self {
-        case let .classAndIdentifier(clazz, identifier, configure):
-            guard let collectionViewCell = containingView.dequeueReusableCell(withReuseIdentifier: identifier, for: indexPath) as? UICollectionViewCell else {
-                return ProducedView()
-            }
+        case let .classAndIdentifier(_, identifier, configure):
+            let collectionViewCell = containingView.dequeueReusableCell(withReuseIdentifier: identifier, for: indexPath)
             configure(item, collectionViewCell)
             return collectionViewCell
-        case let .nibAndIdentifier(nib, identifier, configure):
-            guard let collectionViewCell = containingView.dequeueReusableCell(withReuseIdentifier: identifier, for: indexPath) as? UICollectionViewCell else {
-                return ProducedView()
-            }
+        case let .nibAndIdentifier(_, identifier, configure):
+            let collectionViewCell = containingView.dequeueReusableCell(withReuseIdentifier: identifier, for: indexPath)
             configure(item, collectionViewCell)
             return collectionViewCell
         }

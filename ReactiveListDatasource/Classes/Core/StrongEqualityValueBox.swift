@@ -9,7 +9,7 @@ import Foundation
 /// API or Cache response is generated, or if a value is read from
 /// disk cache. After that, the box is just passed around (and equated a lot)
 /// until the value is finally used.
-public struct StrongEqualityValueBox<Value: Any>: Equatable {
+public struct EquatableBox<Value: Any>: Equatable {
     public let value: Value
     let equalityId: String
     
@@ -18,9 +18,9 @@ public struct StrongEqualityValueBox<Value: Any>: Equatable {
         self.equalityId = UUID().uuidString
     }
     
-    public static func ==(lhs: StrongEqualityValueBox, rhs: StrongEqualityValueBox) -> Bool {
+    public static func ==(lhs: EquatableBox, rhs: EquatableBox) -> Bool {
         return lhs.equalityId == rhs.equalityId
     }
 }
 
-extension StrongEqualityValueBox: Codable where Value : Codable {}
+extension EquatableBox: Codable where Value : Codable {}

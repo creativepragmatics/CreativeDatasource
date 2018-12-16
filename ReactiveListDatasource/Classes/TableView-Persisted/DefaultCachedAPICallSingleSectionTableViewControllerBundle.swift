@@ -5,7 +5,7 @@ import UIKit
 ///     occurs (`.retainLastResult` applied).
 /// - Disk state persister (for writing success states to disk)
 /// - Cached datasource
-public struct DefaultCachedAPICallSingleSectionTableViewControllerBundle<DatasourceBundle: CachedAPICallDatasourceBundleProtocol, Cell: DefaultListItem> where DatasourceBundle.APICallDatasource.State.E == Cell.E {
+public struct DefaultCachedAPICallSingleSectionTableViewControllerBundle<DatasourceBundle: CachedAPICallDatasourceBundleProtocol, Cell: DefaultListItem> where DatasourceBundle.APICallDatasource.E == Cell.E {
     
     public typealias CellProducer = DefaultTableViewCellProducer<Cell>
     public typealias TableViewDatasource = DefaultSingleSectionTableViewDatasource<DatasourceBundle.CachedDatasourceConcrete, CellProducer>

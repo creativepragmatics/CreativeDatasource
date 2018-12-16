@@ -4,46 +4,43 @@ import Result
 
 public protocol LoadImpulseEmitterProtocol {
     associatedtype P: Parameters
-    associatedtype LIT: LoadImpulseType
     
-    var loadImpulses: SignalProducer<LoadImpulse<P, LIT>, NoError> {get}
-    func emit(_ loadImpulse: LoadImpulse<P, LIT>)
+    var loadImpulses: SignalProducer<LoadImpulse<P>, NoError> {get}
+    func emit(_ loadImpulse: LoadImpulse<P>)
 }
 
 public extension LoadImpulseEmitterProtocol {
-    public var any: AnyLoadImpulseEmitter<P, LIT> {
+    public var any: AnyLoadImpulseEmitter<P> {
         return AnyLoadImpulseEmitter(self)
     }
 }
 
-public struct AnyLoadImpulseEmitter<P_: Parameters, LIT_: LoadImpulseType>: LoadImpulseEmitterProtocol {
+public struct AnyLoadImpulseEmitter<P_: Parameters>: LoadImpulseEmitterProtocol {
     public typealias P = P_
-    public typealias LIT = LIT_
     
-    public let loadImpulses: SignalProducer<LoadImpulse<P_, LIT_>, NoError>
-    private let _emit: (LoadImpulse<P, LIT>) -> ()
+    public let loadImpulses: SignalProducer<LoadImpulse<P_>, NoError>
+    private let _emit: (LoadImpulse<P>) -> ()
     
-    init<E: LoadImpulseEmitterProtocol>(_ emitter: E) where E.P == P, E.LIT == LIT {
+    init<E: LoadImpulseEmitterProtocol>(_ emitter: E) where E.P == P {
         self.loadImpulses = emitter.loadImpulses
         self._emit = emitter.emit
     }
     
-    public func emit(_ loadImpulse: LoadImpulse<P_, LIT_>) {
+    public func emit(_ loadImpulse: LoadImpulse<P_>) {
         _emit(loadImpulse)
     }
 }
 
 
-public struct DefaultLoadImpulseEmitter<P_: Parameters, LIT_: LoadImpulseType>: LoadImpulseEmitterProtocol {
+public struct DefaultLoadImpulseEmitter<P_: Parameters>: LoadImpulseEmitterProtocol {
     public typealias P = P_
-    public typealias LIT = LIT_
-    public typealias LI = LoadImpulse<P, LIT>
+    public typealias LI = LoadImpulse<P>
     private typealias Pipe = (output: Signal<LI, NoError>, input: Signal<LI, NoError>.Observer)
 
     public let loadImpulses: SignalProducer<LI, NoError>
     private let pipe: Pipe
 
-    public init(emitInitially initialImpulse: LoadImpulse<P, LIT>?) {
+    public init(emitInitially initialImpulse: LoadImpulse<P>?) {
         
         func loadImpulsesProducer(pipe: Pipe, initialImpulse: LI?) -> SignalProducer<LI, NoError> {
             let impulses = SignalProducer(pipe.output)
@@ -54,37 +51,36 @@ public struct DefaultLoadImpulseEmitter<P_: Parameters, LIT_: LoadImpulseType>: 
             }
         }
         
-        let pipe = Signal<LoadImpulse<P, LIT>, NoError>.pipe()
+        let pipe = Signal<LoadImpulse<P>, NoError>.pipe()
         self.loadImpulses = loadImpulsesProducer(pipe: pipe, initialImpulse: initialImpulse)
         self.pipe = pipe
     }
 
-    public func emit(_ loadImpulse: LoadImpulse<P, LIT>) {
+    public func emit(_ loadImpulse: LoadImpulse<P>) {
         pipe.input.send(value: loadImpulse)
     }
 
 }
 
-public struct RecurringLoadImpulseEmitter<P_: Parameters, LIT_: LoadImpulseType>: LoadImpulseEmitterProtocol {
+public struct RecurringLoadImpulseEmitter<P_: Parameters>: LoadImpulseEmitterProtocol {
     public typealias P = P_
-    public typealias LIT = LIT_
-    public typealias LI = LoadImpulse<P, LIT>
+    public typealias LI = LoadImpulse<P>
     private typealias Pipe = (output: Signal<LI, NoError>, input: Signal<LI, NoError>.Observer)
     
-    private let innerEmitter: DefaultLoadImpulseEmitter<P, LIT>
+    private let innerEmitter: DefaultLoadImpulseEmitter<P>
     public let loadImpulses: SignalProducer<LI, NoError>
     public let timerMode: MutableProperty<TimerMode> // change at any time to adapt
     
-    public init(emitInitially initialImpulse: LoadImpulse<P, LIT>?, timerMode: TimerMode = .none) {
+    public init(emitInitially initialImpulse: LoadImpulse<P>?, timerMode: TimerMode = .none) {
         
         let timerModeProperty = MutableProperty(timerMode)
         self.timerMode = timerModeProperty
-        self.innerEmitter = DefaultLoadImpulseEmitter<P, LIT>.init(emitInitially: initialImpulse)
+        self.innerEmitter = DefaultLoadImpulseEmitter<P>.init(emitInitially: initialImpulse)
         
         self.loadImpulses = innerEmitter.loadImpulses
             .combineLatest(with: timerModeProperty.producer)
-            .flatMap(.latest, { (loadImpulse, timerMode) -> SignalProducer<LoadImpulse<P, LIT>, NoError> in
-                let current = SignalProducer<LoadImpulse<P, LIT>, NoError>(value: loadImpulse)
+            .flatMap(.latest, { (loadImpulse, timerMode) -> SignalProducer<LoadImpulse<P>, NoError> in
+                let current = SignalProducer<LoadImpulse<P>, NoError>(value: loadImpulse)
                 
                 switch timerMode {
                 case .none:
@@ -96,7 +92,7 @@ public struct RecurringLoadImpulseEmitter<P_: Parameters, LIT_: LoadImpulseType>
             })
     }
     
-    public func emit(_ loadImpulse: LoadImpulse<P, LIT>) {
+    public func emit(_ loadImpulse: LoadImpulse<P>) {
         innerEmitter.emit(loadImpulse)
     }
     

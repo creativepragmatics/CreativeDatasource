@@ -1,19 +1,17 @@
 public protocol CachedAPICallDatasourceBundleProtocol {
     associatedtype APICallDatasource: PersistableStateDatasource
-    typealias APICallState = APICallDatasource.State
-    typealias LastResultRetainingAPICallState = APICallDatasource.LastResultRetaining.State
-    typealias CachedDatasourceConcrete = CachedDatasource<LastResultRetainingAPICallState>
-    typealias LoadImpulseEmitterConcrete = RecurringLoadImpulseEmitter<LastResultRetainingAPICallState.P, LastResultRetainingAPICallState.LIT>
+    typealias APICallState = APICallDatasource.DatasourceState
+    typealias CachedDatasourceConcrete = CachedDatasource<APICallState.Value, APICallState.P, APICallState.E>
+    typealias LoadImpulseEmitterConcrete = RecurringLoadImpulseEmitter<APICallState.P>
+    typealias Persister = DiskStatePersister<APICallState.Value, APICallState.P, APICallState.E>
     
     var apiCallDatasource: APICallDatasource {get}
     var cachedDatasource: CachedDatasourceConcrete {get}
     var loadImpulseEmitter: LoadImpulseEmitterConcrete {get}
-    var persister: DiskStatePersister<LastResultRetainingAPICallState>? {get}
+    var persister: Persister? {get}
 }
 
-public protocol PersistableStateDatasource: DatasourceProtocol {
-    associatedtype State: Codable where State.Value: Codable, State.P: Codable, State.LIT: Codable, State.E: Codable & CachedDatasourceError
-}
+public protocol PersistableStateDatasource: DatasourceProtocol where Value: Codable, P: Codable, E: CachedDatasourceError & Codable {}
 
 /// Pure convenience bundle of:
 /// - API call datasource whose last success state is retained when a reload
@@ -23,20 +21,22 @@ public protocol PersistableStateDatasource: DatasourceProtocol {
 ///
 public struct DefaultCachedAPICallDatasourceBundle<APICallDatasource_: PersistableStateDatasource>: CachedAPICallDatasourceBundleProtocol {
     public typealias APICallDatasource = APICallDatasource_
-    public typealias LoadImpulseEmitterConcrete = RecurringLoadImpulseEmitter<LastResultRetainingAPICallState.P, LastResultRetainingAPICallState.LIT>
-    public typealias CachedDatasourceConcrete = CachedDatasource<LastResultRetainingAPICallState>
+    public typealias APICallState = APICallDatasource.DatasourceState
+    public typealias CachedDatasourceConcrete = CachedDatasource<APICallState.Value, APICallState.P, APICallState.E>
+    public typealias LoadImpulseEmitterConcrete = RecurringLoadImpulseEmitter<APICallState.P>
+    public typealias Persister = DiskStatePersister<APICallState.Value, APICallState.P, APICallState.E>
     
     public let apiCallDatasource: APICallDatasource
     public let cachedDatasource: CachedDatasourceConcrete
     public let loadImpulseEmitter: LoadImpulseEmitterConcrete
-    public let persister: DiskStatePersister<APICallDatasource.LastResultRetaining.State>? // optional because init can fail
+    public let persister: Persister? // optional because init can fail
     
-    public init(primaryDatasourceGenerator: (LoadImpulseEmitterConcrete) -> APICallDatasource, initialLoadImpulse: LoadImpulse<APICallDatasource.State.P, APICallDatasource.State.LIT>?, cacheKey: String) {
+    public init(primaryDatasourceGenerator: (LoadImpulseEmitterConcrete) -> APICallDatasource, initialLoadImpulse: LoadImpulse<APICallState.P>?, cacheKey: String) {
         
-        let diskStatePersister = DiskStatePersister<LastResultRetainingAPICallState>(key: cacheKey)
+        let diskStatePersister = Persister(key: cacheKey)
         let loadImpulseEmitter = LoadImpulseEmitterConcrete.init(emitInitially: initialLoadImpulse)
         let primaryDatasource = primaryDatasourceGenerator(loadImpulseEmitter)
-        let cacheLoadError = APICallDatasource.State.E.init(cacheLoadError: .default)
+        let cacheLoadError = APICallDatasource.E.init(cacheLoadError: .default)
         let cacheDatasource = PlainCacheDatasource.init(persister: diskStatePersister.any, loadImpulseEmitter: loadImpulseEmitter.any, cacheLoadError: cacheLoadError)
         let lastResultRetainingPrimaryDatasource = primaryDatasource.retainLastResult
         

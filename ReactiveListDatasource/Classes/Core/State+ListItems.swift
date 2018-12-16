@@ -2,7 +2,7 @@ import Foundation
 import ReactiveSwift
 import Result
 
-extension StateProtocol {
+extension State {
     
     
     /// Returns cells according to the `state` and the given `valueToItems` closure.
@@ -15,7 +15,7 @@ extension StateProtocol {
         errorSection: ((E) -> SectionWithItems<Item, Section>)? = nil,
         noResultsSection: (() -> SectionWithItems<Item, Section>)? = nil) -> ListSections<Item, Section> {
         
-        func boxedValueToSections(_ box: StrongEqualityValueBox<Value>?) -> [SectionWithItems<Item, Section>]? {
+        func boxedValueToSections(_ box: EquatableBox<Value>?) -> [SectionWithItems<Item, Section>]? {
             return (box?.value).flatMap({ valueToSections($0) })
         }
         
@@ -41,8 +41,8 @@ extension StateProtocol {
         
         switch provisioningState {
         case .notReady:
-            return ListSections<Item, Section>.datasourceNotReady
-        case let .loading:
+            return ListSections<Item, Section>.notReady
+        case .loading:
             if let sections = boxedValueToSections(value), sections.map({ $0.items.count }).reduce(0, +) > 0 {
                 // Loading and there are cached items, return them
                 return ListSections.readyToDisplay(sections)
@@ -61,7 +61,7 @@ extension StateProtocol {
                     return ListSections.readyToDisplay([])
                 }
             }
-        case let .result:
+        case .result:
             if let value = self.value {
                 if let cells = boxedValueToSections(value), cells.count > 0 {
                     // Success, return items
@@ -86,7 +86,7 @@ extension StateProtocol {
                                                        errorItem: ((E) -> Item)? = nil,
                                                        noResultsItem: (() -> Item)? = nil) -> SingleSectionListItems<Item> {
         
-        func boxedValueToItems(_ box: StrongEqualityValueBox<Value>?) -> [Item]? {
+        func boxedValueToItems(_ box: EquatableBox<Value>?) -> [Item]? {
             return (box?.value).flatMap({ valueToItems($0) })
         }
         
@@ -112,8 +112,8 @@ extension StateProtocol {
         
         switch provisioningState {
         case .notReady:
-            return SingleSectionListItems<Item>.datasourceNotReady
-        case let .loading:
+            return SingleSectionListItems<Item>.notReady
+        case .loading:
             if let items = boxedValueToItems(value), items.count > 0 {
                 // Loading and there are cached items, return them
                 return SingleSectionListItems<Item>.readyToDisplay(items)
@@ -132,7 +132,7 @@ extension StateProtocol {
                     return SingleSectionListItems<Item>.readyToDisplay([])
                 }
             }
-        case let .result:
+        case .result:
             if let value = self.value {
                 if let cells = boxedValueToItems(value), cells.count > 0 {
                     // Success, return items

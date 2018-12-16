@@ -1,37 +1,42 @@
 import Foundation
 
 public protocol StatePersister {
-    associatedtype State: StateProtocol
+    associatedtype Value: Any
+    associatedtype P: Parameters
+    associatedtype E: DatasourceError
+    typealias PersistedState = State<Value, P, E>
     
-    func persist(_ state: State)
-    func load(_ parameters: State.P) -> State?
+    func persist(_ state: PersistedState)
+    func load(_ parameters: P) -> PersistedState?
     func purge()
 }
 
 public extension StatePersister {
-    var any: AnyStatePersister<State> {
+    var any: AnyStatePersister<Value, P, E> {
         return AnyStatePersister(self)
     }
 }
 
-public struct AnyStatePersister<State_: StateProtocol> : StatePersister {
-    public typealias State = State_
+public struct AnyStatePersister<Value_: Any, P_: Parameters, E_: DatasourceError> : StatePersister {
+    public typealias Value = Value_
+    public typealias P = P_
+    public typealias E = E_
     
-    private let _persist: (State) -> ()
-    private let _load: (State.P) -> State?
+    private let _persist: (PersistedState) -> ()
+    private let _load: (P) -> PersistedState?
     private let _purge: () -> ()
     
-    public init<SP: StatePersister>(_ persister: SP) where SP.State == State {
+    public init<SP: StatePersister>(_ persister: SP) where SP.PersistedState == PersistedState {
         self._persist = persister.persist
         self._load = persister.load
         self._purge = persister.purge
     }
     
-    public func persist(_ state: State) {
+    public func persist(_ state: PersistedState) {
         _persist(state)
     }
     
-    public func load(_ parameters: State.P) -> State? {
+    public func load(_ parameters: P) -> PersistedState? {
         return _load(parameters)
     }
     

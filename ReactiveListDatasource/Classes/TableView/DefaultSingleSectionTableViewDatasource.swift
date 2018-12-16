@@ -3,7 +3,7 @@ import UIKit
 import ReactiveSwift
 import Result
 
-open class DefaultSingleSectionTableViewDatasource<Datasource: DatasourceProtocol, CellViewProducer: TableViewCellProducer>: NSObject, UITableViewDelegate, UITableViewDataSource where CellViewProducer.Item : DefaultListItem, CellViewProducer.Item.E == Datasource.State.E {
+open class DefaultSingleSectionTableViewDatasource<Datasource: DatasourceProtocol, CellViewProducer: TableViewCellProducer>: NSObject, UITableViewDelegate, UITableViewDataSource where CellViewProducer.Item : DefaultListItem, CellViewProducer.Item.E == Datasource.E {
     
     public typealias Core = DefaultSingleSectionListViewDatasourceCore<Datasource, CellViewProducer>
     
@@ -16,7 +16,7 @@ open class DefaultSingleSectionTableViewDatasource<Datasource: DatasourceProtoco
     public var heightAtIndexPath: [IndexPath: CGFloat] = [:]
     
     lazy var cells: Property<Core.Items> = {
-        return Property<Core.Items>(initial: Core.Items.datasourceNotReady, then: self.cellsProducer())
+        return Property<Core.Items>(initial: Core.Items.notReady, then: self.cellsProducer())
     }()
     
     public init(dataSource: Datasource) {
@@ -38,15 +38,15 @@ open class DefaultSingleSectionTableViewDatasource<Datasource: DatasourceProtoco
     
     private func cellsProducer() -> SignalProducer<Core.Items, NoError> {
         return dataSource.state.map({ [weak self] state -> Core.Items in
-            guard let self = self else { return Core.Items.datasourceNotReady }
+            guard let strongSelf = self else { return Core.Items.notReady }
             
-            let stateToItems = self.core.stateToItems
-            let valueToItems = self.core.valueToItems ?? { _ -> [Core.Item] in
+            let stateToItems = strongSelf.core.stateToItems
+            let valueToItems = strongSelf.core.valueToItems ?? { _ -> [Core.Item] in
                 return [Core.Item(errorMessage: "Set DefaultSingleSectionListViewDatasourceCore.valueToItems")]
             }
             
-            return stateToItems(state, valueToItems, self.core.loadingItem, self.core.errorItem, self.core.noResultsItem)
-        })
+            return stateToItems(state, valueToItems, strongSelf.core.loadingItem, strongSelf.core.errorItem, strongSelf.core.noResultsItem)
+        }).observe(on: UIScheduler())
     }
     
     public func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {

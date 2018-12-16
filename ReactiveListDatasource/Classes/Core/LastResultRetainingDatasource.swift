@@ -2,24 +2,26 @@ import Foundation
 import ReactiveSwift
 import Result
 
-public struct LastResultRetainingDatasource<SubDatasourceState: StateProtocol>: DatasourceProtocol {
-    public typealias State = CompositeState<SubDatasourceState.Value, SubDatasourceState.P, SubDatasourceState.LIT, SubDatasourceState.E>
+public struct LastResultRetainingDatasource<Value_: Any, P_: Parameters, E_: DatasourceError>: DatasourceProtocol {
+    public typealias Value = Value_
+    public typealias P = P_
+    public typealias E = E_
     
-    public typealias LoadImpulseEmitterConcrete = AnyLoadImpulseEmitter<SubDatasourceState.P, SubDatasourceState.LIT>
-    public typealias SubDatasource = AnyDatasource<SubDatasourceState>
+    public typealias SubDatasource = AnyDatasource<Value, P, E>
+    public typealias LoadImpulseEmitterConcrete = AnyLoadImpulseEmitter<P>
     
     public let loadsSynchronously = true
     
-    public let state: SignalProducer<State, NoError>
+    public let state: SignalProducer<DatasourceState, NoError>
     
     public init(innerDatasource: SubDatasource) {
         self.state = LastResultRetainingDatasource.stateProducer(innerDatasource: innerDatasource)
     }
     
     private static func stateProducer(innerDatasource: SubDatasource)
-        -> SignalProducer<State, NoError> {
-            let initialState = SignalProducer(value: SubDatasourceState(notReadyProvisioningState: .notReady))
-            let lazyStates: SignalProducer<SubDatasourceState, NoError> = {
+        -> SignalProducer<DatasourceState, NoError> {
+            let initialState = SignalProducer(value: DatasourceState.notReady)
+            let lazyStates: SignalProducer<DatasourceState, NoError> = {
                 if innerDatasource.loadsSynchronously {
                     return innerDatasource.state.replayLazily(upTo: 1)
                 } else {
@@ -36,41 +38,41 @@ public struct LastResultRetainingDatasource<SubDatasourceState: StateProtocol>: 
             
             return lazyStates
                 .combineLatest(with: resultStates)
-                .map { (latestState, lastResultState) -> State in
+                .map { (latestState, lastResultState) -> DatasourceState in
                     switch latestState.provisioningState {
                     case .notReady:
-                        return State.datasourceNotReady
+                        return DatasourceState.notReady
                     case .loading:
-                        guard let loadImpulse = latestState.loadImpulse else { return .datasourceNotReady }
+                        guard let loadImpulse = latestState.loadImpulse else { return .notReady }
                         
-                        if let successValue = latestState.cacheCompatibleValue(for: loadImpulse) {
-                            return State.loading(fallbackValue: successValue, fallbackError: latestState.error, loadImpulse: loadImpulse)
-                        } else if let lastResultValue = lastResultState.cacheCompatibleValue(for: loadImpulse) {
-                            return State.loading(fallbackValue: lastResultValue, fallbackError: lastResultState.error, loadImpulse: loadImpulse)
+                        if let successValueBox = latestState.cacheCompatibleValue(for: loadImpulse) {
+                            return DatasourceState.loading(loadImpulse: loadImpulse, fallbackValue: successValueBox.value, fallbackError: latestState.error)
+                        } else if let lastResultValueBox = lastResultState.cacheCompatibleValue(for: loadImpulse) {
+                            return DatasourceState.loading(loadImpulse: loadImpulse, fallbackValue: lastResultValueBox.value, fallbackError: latestState.error)
                         } else {
-                            return State.loading(fallbackValue: nil, fallbackError: latestState.error, loadImpulse: loadImpulse)
+                            return DatasourceState.loading(loadImpulse: loadImpulse, fallbackValue: nil, fallbackError: latestState.error)
                         }
                     case .result:
-                        guard let loadImpulse = latestState.loadImpulse else { return .datasourceNotReady }
+                        guard let loadImpulse = latestState.loadImpulse else { return .notReady }
                         
-                        if let latestSuccessValue = latestState.cacheCompatibleValue(for: loadImpulse) {
+                        if let latestSuccessValueBox = latestState.cacheCompatibleValue(for: loadImpulse) {
                             if let error = latestState.error {
-                                return State.error(error: error, fallbackValue: latestSuccessValue, loadImpulse: loadImpulse)
+                                return DatasourceState.error(error: error, loadImpulse: loadImpulse, fallbackValue: latestSuccessValueBox.value)
                             } else {
-                                return State.success(valueBox: latestSuccessValue, loadImpulse: loadImpulse)
+                                return DatasourceState.value(value: latestSuccessValueBox.value, loadImpulse: loadImpulse, fallbackError: nil)
                             }
                         } else if let latestError = latestState.error {
                             if let lastResultValue = lastResultState.cacheCompatibleValue(for: loadImpulse) {
-                                return State.error(error: latestError, fallbackValue: lastResultValue, loadImpulse: loadImpulse)
+                                return DatasourceState.error(error: latestError, loadImpulse: loadImpulse, fallbackValue: lastResultValue.value)
                             } else {
-                                return State.error(error: latestError, fallbackValue: nil, loadImpulse: loadImpulse)
+                                return DatasourceState.error(error: latestError, loadImpulse: loadImpulse, fallbackValue: nil)
                             }
                         } else {
-                            // Latest state might not match current parameters - return .datasourceNotReady
+                            // Latest state might not match current parameters - return .notReady
                             // so all cached data is purged. This can happen if e.g. an authenticated API
                             // request has been made, but the user has logged out in the meantime. The result
                             // must be discarded or the next logged in user might see the previous user's data.
-                            return State.datasourceNotReady
+                            return DatasourceState.notReady
                         }
                     }
             }
@@ -81,7 +83,7 @@ public struct LastResultRetainingDatasource<SubDatasourceState: StateProtocol>: 
 
 public extension DatasourceProtocol {
     
-    public typealias LastResultRetaining = LastResultRetainingDatasource<State>
+    public typealias LastResultRetaining = LastResultRetainingDatasource<Value, P, E>
     
     public var retainLastResult: LastResultRetaining {
         return LastResultRetaining(innerDatasource: self.any)

@@ -1,13 +1,12 @@
 import Foundation
 import UIKit
 
-public protocol TableViewCellProducer : ListItemViewProducer {
-    typealias ProducedView = UITableViewCell
-    typealias ContainingView = UITableView
-}
+public protocol TableViewCellProducer : ListItemViewProducer where ProducedView == UITableViewCell, ContainingView == UITableView {}
 
 public enum DefaultTableViewCellProducer<Cell: ListItem>: TableViewCellProducer {
     public typealias Item = Cell
+    public typealias ProducedView = UITableViewCell
+    public typealias ContainingView = UITableView
     public typealias TableViewCellDequeueIdentifier = String
     
     // Cell class registration is performed automatically:
@@ -20,16 +19,12 @@ public enum DefaultTableViewCellProducer<Cell: ListItem>: TableViewCellProducer 
     
     public func view(containingView: UITableView, item: Cell, for indexPath: IndexPath) -> ProducedView {
         switch self {
-        case let .classAndIdentifier(clazz, identifier, configure):
-            guard let tableViewCell = containingView.dequeueReusableCell(withIdentifier: identifier, for: indexPath) as? UITableViewCell else {
-                return ProducedView()
-            }
+        case let .classAndIdentifier(_, identifier, configure):
+            let tableViewCell = containingView.dequeueReusableCell(withIdentifier: identifier, for: indexPath)
             configure(item, tableViewCell)
             return tableViewCell
-        case let .nibAndIdentifier(nib, identifier, configure):
-            guard let tableViewCell = containingView.dequeueReusableCell(withIdentifier: identifier, for: indexPath) as? UITableViewCell else {
-                return ProducedView()
-            }
+        case let .nibAndIdentifier(_, identifier, configure):
+            let tableViewCell = containingView.dequeueReusableCell(withIdentifier: identifier, for: indexPath)
             configure(item, tableViewCell)
             return tableViewCell
         case let .instantiate(instantiate):
@@ -43,7 +38,7 @@ public enum DefaultTableViewCellProducer<Cell: ListItem>: TableViewCellProducer 
             containingView.register(clazz, forCellReuseIdentifier: identifier)
         case let .nibAndIdentifier(nib, identifier, _):
             containingView.register(nib, forCellReuseIdentifier: identifier)
-        case let .instantiate(instantiate):
+        case .instantiate:
             break
         }
     }

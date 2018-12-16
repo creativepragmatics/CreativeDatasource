@@ -1,27 +1,56 @@
 PODS:
-  - ReactiveListDatasource (0.1.0)
-  - Nimble (7.0.3)
-  - Quick (1.2.0)
+  - Cache (5.2.0)
+  - Dwifft (0.9)
+  - ReactiveListDatasource (0.1.0):
+    - ReactiveListDatasource/CachePersister (= 0.1.0)
+    - ReactiveListDatasource/Core (= 0.1.0)
+    - ReactiveListDatasource/UICollectionView (= 0.1.0)
+    - ReactiveListDatasource/UITableView (= 0.1.0)
+    - ReactiveListDatasource/UITableView-Persisted (= 0.1.0)
+    - ReactiveSwift (~> 4.0.0)
+  - ReactiveListDatasource/CachePersister (0.1.0):
+    - Cache (~> 5.2.0)
+    - ReactiveListDatasource/Core
+    - ReactiveSwift (~> 4.0.0)
+  - ReactiveListDatasource/Core (0.1.0):
+    - ReactiveSwift (~> 4.0.0)
+  - ReactiveListDatasource/UICollectionView (0.1.0):
+    - Dwifft (~> 0.9)
+    - ReactiveListDatasource/Core
+    - ReactiveSwift (~> 4.0.0)
+  - ReactiveListDatasource/UITableView (0.1.0):
+    - Dwifft (~> 0.9)
+    - ReactiveListDatasource/Core
+    - ReactiveSwift (~> 4.0.0)
+  - ReactiveListDatasource/UITableView-Persisted (0.1.0):
+    - ReactiveListDatasource/Core
+    - ReactiveListDatasource/UITableView
+    - ReactiveSwift (~> 4.0.0)
+  - ReactiveSwift (4.0.0):
+    - Result (~> 4.0)
+  - Result (4.0.0)
 
 DEPENDENCIES:
   - ReactiveListDatasource (from `../`)
-  - Nimble (~> 7.0.2)
-  - Quick (~> 1.2.0)
 
 SPEC REPOS:
   https://github.com/cocoapods/specs.git:
-    - Nimble
-    - Quick
+    - Cache
+    - Dwifft
+    - ReactiveSwift
+    - Result
 
 EXTERNAL SOURCES:
   ReactiveListDatasource:
     :path: "../"
 
 SPEC CHECKSUMS:
-  ReactiveListDatasource: e55fc5a6f6c984e6b5b82747fe5d120b56c98e5d
-  Nimble: 7f5a9c447a33002645a071bddafbfb24ea70e0ac
-  Quick: 58d203b1c5e27fff7229c4c1ae445ad7069a7a08
+  Cache: 807c5d86d01a177f06ede9865add3aea269bbfd4
+  Dwifft: 42912068ed2a8146077d1a1404df18625bd086e1
+  ReactiveListDatasource: 1eb5f0962503e590913803e9a5f7b825a7a42a64
+  ReactiveSwift: a2bb9ace428a109e9c0209615645d9d286c8c433
+  Result: 7645bb3f50c2ce726dd0ff2fa7b6f42bbe6c3713
 
-PODFILE CHECKSUM: 752a5a46c86c2e4935fa370320090f49bf59f597
+PODFILE CHECKSUM: 5dd292b09dd22bc7c2c70d165a6235331ac8ce40
 
 COCOAPODS: 1.5.3

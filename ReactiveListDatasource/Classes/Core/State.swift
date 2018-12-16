@@ -1,32 +1,44 @@
 import Foundation
 import Result
 
-public protocol StateProtocol: Equatable {
-    associatedtype Value: Any
-    associatedtype P: Parameters
-    associatedtype LIT: LoadImpulseType
-    associatedtype E: DatasourceError
+/// Originally an enum, State is a struct to provide maximal flexibility,
+/// and remove any semantic annotations of value and error.
+public struct State<Value_, P_: Parameters, E_: DatasourceError>: Equatable {
+    public typealias Value = Value_
+    public typealias P = P_
+    public typealias E = E_
     
-    var provisioningState: ProvisioningState {get}
-    var loadImpulse: LoadImpulse<P, LIT>? {get}
-    var value: StrongEqualityValueBox<Value>? {get}
-    var error: E? {get}
+    public var provisioningState: ProvisioningState
+    public var loadImpulse: LoadImpulse<P>?
+    public var value: EquatableBox<Value>?
+    public var error: E?
     
-    /// Creates an initial state with `provisioningState` == `.notReady`.
-    /// Workaround since generic static vars or functions would not work
-    /// with AnyState.
-    init(notReadyProvisioningState: ProvisioningState)
-    
-    /// Creates an error state.
-    init(error: E, loadImpulse: LoadImpulse<P, LIT>)
 }
 
-public extension StateProtocol {
+public extension State {
     
-    public typealias AnyStateType = AnyState<Value, P, LIT, E>
+    /// Datasource is not ready to provide data.
+    static var notReady: State {
+        return State.init(provisioningState: .notReady, loadImpulse: nil, value: nil, error: nil)
+    }
     
-    public var any: AnyStateType {
-        return AnyStateType(self)
+    /// An error has been encountered in a datasource (e.g. while loading).
+    /// A value can still be defined (e.g. API call failed, but a cache value is
+    /// available).
+    static func error(error: E, loadImpulse: LoadImpulse<P>, fallbackValue: Value?) -> State {
+        return State.init(provisioningState: .result, loadImpulse: loadImpulse, value: fallbackValue.map({ EquatableBox($0) }), error: error)
+    }
+    
+    /// A value has been created in a datasource. An error can still be defined
+    /// (e.g. a cached value has been found, but )
+    static func value(value: Value, loadImpulse: LoadImpulse<P>, fallbackError: E?) -> State {
+        return State.init(provisioningState: .result, loadImpulse: loadImpulse, value: EquatableBox(value), error: fallbackError)
+    }
+    
+    /// The emitting datasource is loading, and has a fallbackValue (e.g. from a cache), or
+    /// a fallback error, or both.
+    static func loading(loadImpulse: LoadImpulse<P>, fallbackValue: Value?, fallbackError: E?) -> State {
+        return State.init(provisioningState: .loading, loadImpulse: loadImpulse, value: fallbackValue.map({ EquatableBox($0) }), error: fallbackError)
     }
     
     var hasLoadedSuccessfully: Bool {
@@ -38,7 +50,7 @@ public extension StateProtocol {
         }
     }
     
-    func cacheCompatibleValue(for loadImpulse: LoadImpulse<P, LIT>) -> StrongEqualityValueBox<Value>? {
+    func cacheCompatibleValue(for loadImpulse: LoadImpulse<P>) -> EquatableBox<Value>? {
         guard let value = self.value,
             let selfLoadImpulse = self.loadImpulse,
             selfLoadImpulse.isCacheCompatible(loadImpulse) else {
@@ -56,72 +68,4 @@ public enum ProvisioningState: Int, Equatable, Codable {
     case result
 }
 
-public struct AnyState<Value_: Any, P_: Parameters, LIT_: LoadImpulseType, E_: DatasourceError>: StateProtocol {
-    
-    public typealias Value = Value_
-    public typealias P = P_
-    public typealias LIT = LIT_
-    public typealias E = E_
-    
-    public let provisioningState: ProvisioningState
-    public let loadImpulse: LoadImpulse<P, LIT>?
-    public let value: StrongEqualityValueBox<Value>?
-    public let error: E?
-    
-    init<S: StateProtocol>(_ state: S) where S.Value == Value, S.P == P, S.LIT == LIT, S.E == E {
-        self.provisioningState = state.provisioningState
-        self.loadImpulse = state.loadImpulse
-        self.value = state.value
-        self.error = state.error
-    }
-    
-    public init(notReadyProvisioningState: ProvisioningState) {
-        self.provisioningState = notReadyProvisioningState
-        self.loadImpulse = nil
-        self.value = nil
-        self.error = nil
-    }
-    
-    public init(error: E, loadImpulse: LoadImpulse<P, LIT>) {
-        self.provisioningState = .result
-        self.loadImpulse = loadImpulse
-        self.error = error
-        self.value = nil
-    }
-    
-    public static func == (lhs: AnyState<Value_, P_, LIT_, E_>, rhs: AnyState<Value_, P_, LIT_, E_>) -> Bool {
-        guard lhs.provisioningState == rhs.provisioningState else { return false}
-        guard lhs.loadImpulse == rhs.loadImpulse else { return false}
-        
-        let valueEqual: Bool = {
-            switch (lhs.value, rhs.value) {
-            case let (lValue?, rValue?):
-                return lValue == rValue
-            case (nil, nil):
-                return true
-            default:
-                return false
-            }
-        }()
-        
-        guard valueEqual else { return false }
-        
-        let errorEqual: Bool = {
-            switch (lhs.error, rhs.error) {
-            case let (lValue?, rValue?):
-                return lValue == rValue
-            case (nil, nil):
-                return true
-            default:
-                return false
-            }
-        }()
-        
-        guard errorEqual else { return false }
-        
-        return true
-    }
-
-}
-
-extension AnyState: Codable where Value: Codable, P: Codable, LIT: Codable, E: Codable {}
+extension State: Codable where Value_: Codable, P_: Codable, E_: Codable {}

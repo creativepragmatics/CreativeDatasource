@@ -3,7 +3,7 @@ import UIKit
 import ReactiveSwift
 import Result
 
-open class DefaultCollectionViewDatasource<Datasource: DatasourceProtocol, CellViewProducer: CollectionViewCellProducer, Section: ListSection>: NSObject, UICollectionViewDataSource, UICollectionViewDelegate where CellViewProducer.Item : DefaultListItem, CellViewProducer.Item.E == Datasource.State.E {
+open class DefaultCollectionViewDatasource<Datasource: DatasourceProtocol, CellViewProducer: CollectionViewCellProducer, Section: ListSection>: NSObject, UICollectionViewDataSource, UICollectionViewDelegate where CellViewProducer.Item : DefaultListItem, CellViewProducer.Item.E == Datasource.E {
     
     public typealias Core = DefaultListViewDatasourceCore<Datasource, CellViewProducer, Section>
     
@@ -11,7 +11,7 @@ open class DefaultCollectionViewDatasource<Datasource: DatasourceProtocol, CellV
     public var core: Core
     
     public lazy var sections: Property<Core.Sections> = {
-        return Property<Core.Sections>(initial: Core.Sections.datasourceNotReady, then: self.sectionsProducer())
+        return Property<Core.Sections>(initial: Core.Sections.notReady, then: self.sectionsProducer())
     }()
     
     public init(dataSource: Datasource) {
@@ -34,15 +34,15 @@ open class DefaultCollectionViewDatasource<Datasource: DatasourceProtocol, CellV
     
     private func sectionsProducer() -> SignalProducer<Core.Sections, NoError> {
         return dataSource.state.map({ [weak self] state -> Core.Sections in
-            guard let self = self else { return Core.Sections.datasourceNotReady }
-            let stateToSections = self.core.stateToSections
-            let valueToSections = self.core.valueToSections ?? { _ -> [SectionWithItems<Core.Item, Core.Section>]? in
+            guard let strongSelf = self else { return Core.Sections.notReady }
+            let stateToSections = strongSelf.core.stateToSections
+            let valueToSections = strongSelf.core.valueToSections ?? { _ -> [SectionWithItems<Core.Item, Core.Section>]? in
                 let errorItem = Core.Item.init(errorMessage: "Set DefaultCollectionViewDatasource.valueToSections")
                 return [SectionWithItems.init(Core.Section(), [errorItem])]
             }
             
-            return stateToSections(state, valueToSections, self.core.loadingSection, self.core.errorSection, self.core.noResultsSection)
-        })
+            return stateToSections(state, valueToSections, strongSelf.core.loadingSection, strongSelf.core.errorSection, strongSelf.core.noResultsSection)
+        }).observe(on: UIScheduler())
     }
     
     public func numberOfSections(in collectionView: UICollectionView) -> Int {

@@ -1,6 +1,0 @@
-framework module ReactiveListDatasource {
-  umbrella header "ReactiveListDatasource-umbrella.h"
-
-  export *
-  module * { export * }
-}
