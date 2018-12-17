@@ -59,6 +59,15 @@ public extension State {
         return value
     }
     
+    func cacheCompatibleError(for loadImpulse: LoadImpulse<P>) -> E? {
+        guard let error = self.error,
+            let selfLoadImpulse = self.loadImpulse,
+            selfLoadImpulse.isCacheCompatible(loadImpulse) else {
+                return nil
+        }
+        return error
+    }
+    
 }
 
 /// Type Int because it gives Equatable and Codable conformance for free
