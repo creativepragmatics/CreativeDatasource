@@ -39,11 +39,15 @@ extension State {
             }
         }
         
+        func numberOfItems(_ sections: [SectionWithItems<Item, Section>]) -> Int {
+            return sections.map({ $0.items.count }).reduce(0, +)
+        }
+        
         switch provisioningState {
         case .notReady:
             return ListSections<Item, Section>.notReady
         case .loading:
-            if let sections = boxedValueToSections(value), sections.map({ $0.items.count }).reduce(0, +) > 0 {
+            if let sections = boxedValueToSections(value), numberOfItems(sections) > 0 {
                 // Loading and there are cached items, return them
                 return ListSections.readyToDisplay(sections)
             } else if let error = self.error, let errorSection = errorSection {
@@ -63,9 +67,9 @@ extension State {
             }
         case .result:
             if let value = self.value {
-                if let cells = boxedValueToSections(value), cells.count > 0 {
+                if let sections = boxedValueToSections(value), numberOfItems(sections) > 0 {
                     // Success, return items
-                    return ListSections.readyToDisplay(cells)
+                    return ListSections.readyToDisplay(sections)
                 } else {
                     // Success without items, return error or noResults item
                     return noResultsOrErrorSection()

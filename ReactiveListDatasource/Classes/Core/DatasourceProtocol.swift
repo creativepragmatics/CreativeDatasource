@@ -2,6 +2,9 @@ import Foundation
 import ReactiveSwift
 import Result
 
+/// Provides or transforms a stream of States.
+/// Must either synchronously return a value upon subscription to `state`,
+/// or return `false` for `loadsSynchronously`.
 public protocol DatasourceProtocol {
     associatedtype Value: Any
     associatedtype P: Parameters
