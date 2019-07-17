@@ -24,13 +24,14 @@ open class DefaultSingleSectionTableViewDatasource<Datasource: DatasourceProtoco
         self.core = DefaultSingleSectionListViewDatasourceCore()
     }
     
-    public func configure(with tableView: UITableView, _ build: (Core.Builder) -> (Core.Builder)) {
+    public func configure(with getTableView: @autoclosure () -> UITableView, _ build: (Core.Builder) -> (Core.Builder)) {
         core = build(core.builder).core
         
         core.errorItem = core.errorItem ?? { error in Core.Item.errorCell(error) }
         core.loadingItem = core.loadingItem ?? { Core.Item.loadingCell }
         core.noResultsItem = core.noResultsItem ?? { Core.Item.noResultsCell }
         
+        let tableView = getTableView()
         core.itemToViewMapping.forEach { (itemViewType, producer) in
             producer.register(itemViewType: itemViewType, at: tableView)
         }
